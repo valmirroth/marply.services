@@ -1,0 +1,16 @@
+2025/07/08 17:50:00.235094 INFO: Aplicação iniciada às 2025-07-08T17:50:00-03:00
+2025/07/08 17:50:00.235653 DEBUG: Valor de x: 42
+2025/07/08 17:50:00.235653 WARN: Cuidado: algo inesperado
+2025/07/08 17:50:00.235653 ERROR: Erro inesperado: <nil>
+2025/07/08 17:52:28.372858 INFO: Aplicação iniciada às 2025-07-08T17:52:28-03:00
+2025/07/08 17:52:28.372858 DEBUG: Valor de x: 42
+2025/07/08 17:52:28.372858 WARN: Cuidado: algo inesperado
+2025/07/08 17:52:28.372858 ERROR: Erro inesperado: <nil>
+2025/07/08 18:00:51.093688 INFO: Aplicação iniciada às 2025-07-08T18:00:51-03:00
+2025/07/08 18:00:51.093688 DEBUG: Valor de x: 42
+2025/07/08 18:00:51.095790 WARN: Cuidado: algo inesperado
+2025/07/08 18:00:51.095790 ERROR: Erro inesperado: <nil>
+2025/07/08 18:01:42.743235 INFO: Aplicação iniciada às 2025-07-08T18:01:42-03:00
+2025/07/08 18:01:42.743235 DEBUG: Valor de x: 42
+2025/07/08 18:01:42.743235 WARN: Cuidado: algo inesperado
+2025/07/08 18:01:42.743235 ERROR: Erro inesperado: <nil>

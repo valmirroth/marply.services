@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Resultados - Custo Médio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            background: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .navigation {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .nav-link {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: #1976d2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: #1565c0;
+        }
+
+        .form-container {
+            padding: 20px;
+            /* Reduzido o padding */
+            flex: 1;
+            /* Permite que o form-container cresça */
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            /* Permite que o container encolha quando necessário */
+            overflow: hidden;
+            /* Controla o overflow do container principal */
+        }
+
+        .filters-section {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .filters-section.hidden {
+            max-height: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toggle-filters-btn {
+            background: linear-gradient(135deg, #9c27b0, #673ab7);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 0.9em;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(156, 39, 176, 0.3);
+            margin-bottom: 15px;
+            align-self: flex-start;
+        }
+
+        .toggle-filters-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            /* Reduzido o espaçamento */
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.0em;
+            /* Reduzido o tamanho da fonte */
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            /* Adicionado para espaçamento entre as linhas de formulário */
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            min-width: 180px;
+            /* Ajustado para acomodar melhor */
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            /* Reduzido o padding */
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95em;
+            /* Reduzido o tamanho da fonte */
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+
+        .checkbox-group {
+            background: #f8f9fa;
+            padding: 15px;
+            /* Reduzido o padding */
+            border-radius: 8px;
+            /* Ajustado o raio */
+            border: 2px solid #e0e0e0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            /* Reduzido o espaçamento */
+            padding: 8px;
+            /* Reduzido o padding */
+            background: white;
+            border-radius: 5px;
+            /* Ajustado o raio */
+            border: 1px solid #e0e0e0;
+        }
+
+        .checkbox-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            /* Ajustado o tamanho */
+            height: 18px;
+            /* Ajustado o tamanho */
+            margin-right: 10px;
+            /* Reduzido o espaçamento */
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            flex: 1;
+            font-size: 0.95em;
+            /* Reduzido o tamanho da fonte */
+        }
+
+        .btn-container {
+            text-align: center;
+            margin-top: 15px;
+            /* Reduzido o margin-top */
+        }
+
+        .btn-buscar {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            /* Reduzido o padding */
+            font-size: 1em;
+            /* Reduzido o font-size */
+            font-weight: 600;
+            border-radius: 25px;
+            /* Ajustado o raio */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            /* Ajustado o box-shadow */
+            margin-right: 10px;
+        }
+
+        .btn-buscar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            /* Ajustado o box-shadow */
+        }
+
+        .btn-buscar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-exportar {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            /* Reduzido o padding */
+            font-size: 1em;
+            /* Reduzido o font-size */
+            font-weight: 600;
+            border-radius: 25px;
+            /* Ajustado o raio */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+            /* Ajustado o box-shadow */
+        }
+
+        .btn-exportar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+            /* Ajustado o box-shadow */
+        }
+
+        .status-container {
+            margin-top: 15px;
+            /* Reduzido o margin-top */
+            padding: 15px;
+            /* Reduzido o padding */
+            background: #f8f9fa;
+            border-radius: 5px;
+            /* Ajustado o raio */
+            display: none;
+            flex-shrink: 0;
+            /* Impede que o container encolha */
+        }
+
+        .status-container.show {
+            display: block;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1976d2;
+            font-weight: 500;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e0e0e0;
+            border-top: 2px solid #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success {
+            color: #4caf50;
+            font-weight: 600;
+        }
+
+        .error {
+            color: #f44336;
+            font-weight: 600;
+        }
+
+        .results-container {
+            margin-top: 15px;
+            /* Reduzido o margin-top */
+            display: none;
+            flex: 1;
+            /* Permite que o container de resultados cresça */
+            overflow: hidden;
+            /* Garante que o conteúdo não transborde */
+            flex-direction: column;
+            min-height: 0;
+            /* Importante para o flex funcionar corretamente */
+        }
+
+        .results-container.show {
+            display: flex;
+            /* Garante que seja exibido como flex */
+        }
+
+        .results-summary {
+            background: #e3f2fd;
+            padding: 10px;
+            /* Reduzido o padding */
+            border-radius: 8px;
+            margin-bottom: 15px;
+            /* Ajustado o margin-bottom */
+            border-left: 4px solid #1976d2;
+            font-size: 0.95em;
+            /* Ajustado o font-size */
+            flex-shrink: 0;
+            /* Impede que encolha */
+        }
+
+        .table-container {
+            overflow: auto;
+            /* Permite scroll vertical e horizontal */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            /* Ocupa todo o espaço restante */
+            min-height: 0;
+            /* Importante para o overflow funcionar */
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+            font-size: 0.9em;
+            /* Ajustado o font-size */
+        }
+
+        .results-table th {
+            background: #1976d2;
+            color: white;
+            padding: 10px 8px;
+            /* Reduzido o padding */
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .results-table td {
+            padding: 8px 8px;
+            /* Reduzido o padding */
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.9em;
+            /* Ajustado o font-size */
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .results-table tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        .results-table tbody tr:hover {
+            background-color: #e3f2fd !important;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+            cursor: pointer;
+        }
+
+        .diferenca-custo {
+            background-color: #ffebee !important;
+        }
+
+        .diferenca-custo:nth-child(even) {
+            background-color: #ffcdd2 !important;
+        }
+
+        .diferenca-custo:hover {
+            background-color: #f8bbd9 !important;
+        }
+
+        .diferenca-saldo {
+            background-color: #fff3e0 !important;
+        }
+
+        .diferenca-saldo:nth-child(even) {
+            background-color: #ffe0b2 !important;
+        }
+
+        .diferenca-saldo:hover {
+            background-color: #ffcc80 !important;
+        }
+
+        .diferenca-ambas {
+            background-color: #fce4ec !important;
+        }
+
+        .diferenca-ambas:nth-child(even) {
+            background-color: #f8bbd9 !important;
+        }
+
+        .diferenca-ambas:hover {
+            background-color: #f48fb1 !important;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+                /* Ajustado o gap */
+            }
+
+            .form-row .form-group {
+                min-width: unset;
+                /* Remove a largura mínima em telas menores */
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .btn-container {
+                display: flex;
+                /* Usa flexbox para os botões */
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn-buscar,
+            .btn-exportar {
+                width: 100%;
+                /* Botões ocupam a largura total */
+                margin-right: 0;
+                /* Remove margem direita */
+                padding: 12px 20px;
+                /* Ajusta padding */
+                font-size: 1em;
+                /* Mantém font-size */
+            }
+
+            .results-table th,
+            .results-table td {
+                padding: 8px 4px;
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Análise de Resultados</h1>
+            <p>Filtrar e visualizar dados processados</p>
+        </div>
+
+        <div class="navigation" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <a href="/" class="nav-link">🚀 Nova Análise</a>
+                <a href="/analisar" class="nav-link">🔍 Analisar Resultados</a>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="color: #666; font-size: 0.9em;">👤 {{ user.get('username', user.get('name', 'Usuário'))
+                    }}</span>
+                <a href="/logout"
+                    style="display: inline-block; padding: 8px 16px; background: #f44336; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9em;">🚪
+                    Sair</a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <button type="button" class="toggle-filters-btn" id="toggleFiltersBtn">
+                🔽 Esconder Filtros
+            </button>
+
+            <form id="formAnalisar">
+                <div class="filters-section" id="filtersSection">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mes">📅 Mês</label>
+                            <select id="mes" name="mes" required>
+                                <option value="1" {{ 'selected' if mes_atual==1 else '' }}>Janeiro</option>
+                                <option value="2" {{ 'selected' if mes_atual==2 else '' }}>Fevereiro</option>
+                                <option value="3" {{ 'selected' if mes_atual==3 else '' }}>Março</option>
+                                <option value="4" {{ 'selected' if mes_atual==4 else '' }}>Abril</option>
+                                <option value="5" {{ 'selected' if mes_atual==5 else '' }}>Maio</option>
+                                <option value="6" {{ 'selected' if mes_atual==6 else '' }}>Junho</option>
+                                <option value="7" {{ 'selected' if mes_atual==7 else '' }}>Julho</option>
+                                <option value="8" {{ 'selected' if mes_atual==8 else '' }}>Agosto</option>
+                                <option value="9" {{ 'selected' if mes_atual==9 else '' }}>Setembro</option>
+                                <option value="10" {{ 'selected' if mes_atual==10 else '' }}>Outubro</option>
+                                <option value="11" {{ 'selected' if mes_atual==11 else '' }}>Novembro</option>
+                                <option value="12" {{ 'selected' if mes_atual==12 else '' }}>Dezembro</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ano">🗓️ Ano</label>
+                            <select id="ano" name="ano" required>
+                                <option value="{{ ano_atual - 1 }}">{{ ano_atual - 1 }}</option>
+                                <option value="{{ ano_atual }}" selected>{{ ano_atual }}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="empresa">🏢 Empresa</label>
+                            <select id="empresa" name="empresa" required>
+                                <option value="1" selected>Matriz</option>
+                                <option value="5">Filial</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="filtro_codigo">🏷️ Código do Item</label>
+                            <input type="text" id="filtro_codigo" name="filtro_codigo"
+                                placeholder="Digite parte do código (ex: 001, ABC)">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="filtro_descricao">📝 Descrição do Item</label>
+                            <input type="text" id="filtro_descricao" name="filtro_descricao"
+                                placeholder="Digite parte da descrição">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📋 Opções de Análise</label>
+                        <div class="checkbox-group"
+                            style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                            <div class="checkbox-item" style="flex: 0 0 auto; min-width: 200px; margin-bottom: 0;">
+                                <input type="checkbox" id="incluir_custo" name="incluir_custo" checked>
+                                <label for="incluir_custo">
+                                    <strong>Incluir Custo Médio</strong>
+                                </label>
+                            </div>
+
+                            <div class="checkbox-item" style="flex: 0 0 auto; min-width: 200px; margin-bottom: 0;">
+                                <input type="checkbox" id="incluir_saldo" name="incluir_saldo" checked>
+                                <label for="incluir_saldo">
+                                    <strong>Incluir Saldo</strong>
+                                </label>
+                            </div>
+
+                            <div class="checkbox-item" style="flex: 0 0 auto; min-width: 250px; margin-bottom: 0;">
+                                <input type="checkbox" id="apenas_diferencas" name="apenas_diferencas" checked>
+                                <label for="apenas_diferencas">
+                                    <strong>Apenas Itens com Diferenças</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-container">
+                        <button type="submit" class="btn-buscar" id="btnBuscar">
+                            🔍 Buscar Dados
+                        </button>
+                        <button type="button" class="btn-exportar" id="btnExportar" style="display: none;">
+                            📊 Exportar CSV
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="status-container" id="statusContainer">
+                <div id="statusContent"></div>
+            </div>
+
+            <div class="results-container" id="resultsContainer">
+                <div class="results-summary" id="resultsSummary"></div>
+                <div class="table-container">
+                    <table class="results-table" id="resultsTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('formAnalisar');
+        const btnBuscar = document.getElementById('btnBuscar');
+        const btnExportar = document.getElementById('btnExportar');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusContent = document.getElementById('statusContent');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsSummary = document.getElementById('resultsSummary');
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+
+        let dadosAtuais = [];
+        let filtrosVisiveis = true;
+
+        // Controle de visibilidade dos filtros
+        const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+        const filtersSection = document.getElementById('filtersSection');
+
+        toggleFiltersBtn.addEventListener('click', () => {
+            filtrosVisiveis = !filtrosVisiveis;
+
+            if (filtrosVisiveis) {
+                filtersSection.classList.remove('hidden');
+                toggleFiltersBtn.innerHTML = '🔽 Esconder Filtros';
+            } else {
+                filtersSection.classList.add('hidden');
+                toggleFiltersBtn.innerHTML = '🔼 Mostrar Filtros';
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            if (!formData.get('incluir_custo') && !formData.get('incluir_saldo')) {
+                alert('Selecione pelo menos um tipo de análise!');
+                return;
+            }
+
+            btnBuscar.disabled = true;
+            btnExportar.style.display = 'none';
+            statusContainer.classList.add('show');
+            resultsContainer.classList.remove('show');
+            statusContent.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando dados...</div>';
+
+            try {
+                const response = await fetch('/buscar_resultados', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.erro || 'Erro desconhecido');
+                }
+
+                dadosAtuais = result.dados;
+                exibirResultados(result);
+
+            } catch (error) {
+                statusContent.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+            } finally {
+                btnBuscar.disabled = false;
+            }
+        });
+
+        function exibirResultados(result) {
+            statusContainer.classList.remove('show');
+            resultsContainer.classList.add('show');
+            btnExportar.style.display = 'inline-block';
+
+            // Summary
+            const limiteMensagem = result.registros_exibidos < result.total_registros
+                ? ` (limitado a ${result.registros_exibidos} registros de ${result.total_registros} encontrados)`
+                : '';
+
+            resultsSummary.innerHTML = `
+                <strong>📊 Resultados:</strong> ${result.registros_exibidos} registros${limiteMensagem}
+            `;
+
+            if (result.dados.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px;">Nenhum resultado encontrado</td></tr>';
+                tableHead.innerHTML = '';
+                return;
+            }
+
+            // Headers
+            const primeiroItem = result.dados[0];
+            const headers = Object.keys(primeiroItem).map(key => {
+                const nomeAmigavel = {
+                    'Ordem': 'Ordem',
+                    'Item': 'Item',
+                    'Codigo': 'Código',
+                    'TipoMovimento': 'Tipo',
+                    'QtdeMovimento': 'Qtde',
+                    'DataMovimento': 'Data',
+                    'MovimentoEfetivo': 'Efetivo',
+                    'SaldoOriginal': 'Saldo Orig.',
+                    'SaldoCalculado': 'Saldo Calc.',
+                    'CustoMedioOriginal': 'CM Orig.',
+                    'CustoMedioCalculado': 'CM Calc.',
+                    'DiferencaCusto': 'Dif. Custo',
+                    'DiferencaSaldo': 'Dif. Saldo',
+                    'TemDiferencaCusto': 'Tem Dif. Custo',
+                    'TemDiferencaSaldo': 'Tem Dif. Saldo'
+                };
+                return nomeAmigavel[key] || key;
+            });
+
+            tableHead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+            // Body
+            const rows = result.dados.map(item => {
+                let classe = '';
+                if (item.TemDiferencaCusto && item.TemDiferencaSaldo) {
+                    classe = 'diferenca-ambas';
+                } else if (item.TemDiferencaCusto) {
+                    classe = 'diferenca-custo';
+                } else if (item.TemDiferencaSaldo) {
+                    classe = 'diferenca-saldo';
+                }
+
+                const cells = Object.values(item).map(valor => {
+                    if (valor === true) return 'Sim';
+                    if (valor === false) return 'Não';
+                    if (valor === null || valor === undefined) return '';
+                    return valor;
+                });
+
+                return `<tr class="${classe}">${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+            });
+
+            tableBody.innerHTML = rows.join('');
+        }
+
+        btnExportar.addEventListener('click', () => {
+            if (dadosAtuais.length === 0) return;
+
+            const csv = converterParaCSV(dadosAtuais);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `analise_custo_medio_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        function converterParaCSV(dados) {
+            if (dados.length === 0) return '';
+
+            const headers = Object.keys(dados[0]);
+            const csvContent = [
+                headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','), // Escapa aspas e adiciona aspas ao redor de cada header
+                ...dados.map(row => headers.map(header => {
+                    const valor = row[header];
+                    if (valor === null || valor === undefined) return '';
+                    const stringValor = String(valor);
+                    if (stringValor.includes(',') || stringValor.includes('"') || stringValor.includes('\n')) {
+                        return `"${stringValor.replace(/"/g, '""')}"`;
+                    }
+                    return stringValor;
+                }).join(','))
+            ].join('\n');
+
+            return csvContent;
+        }
+    </script>
+</body>
+
+</html>
