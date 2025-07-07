@@ -1,0 +1,42 @@
+<soapenv:Envelope
+ xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+ xmlns:est="http://rsdata.com.br/ws/estoque">
+<soapenv:Header>
+<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+   <wsse:UsernameToken wsu:Id="UsernameToken-1">
+	  <wsse:Username>{{ .Usuario }}</wsse:Username>
+	  <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{{ .Senha }}</wsse:Password>
+   </wsse:UsernameToken>
+</wsse:Security>
+</soapenv:Header>
+ <soapenv:Body>
+ <est:insertEstoquesRequest>
+ <est:rsdata versao="1">
+ <est:config>
+ <est:tpVerEstoque>NOME</est:tpVerEstoque>
+ </est:config>
+ <est:estoques>
+ <est:estoque>
+ <est:descricao>Capacete</est:descricao>
+<est:marca>Marca</est:marca>
+<est:modelo>Modelo</est:modelo>
+<est:tpClasseProduto>CONSUMO</est:tpClasseProduto>
+ <est:tpEstoque>SIMPLES</est:tpEstoque>
+<est:tpAuditivo>NAO</est:tpAuditivo>
+<est:movimentos>
+ <est:movimento>
+ <est:localEstoque>1</est:localEstoque>
+ <est:tpMovimento>ENTRADA</est:tpMovimento>
+<est:dtMovimento>2021-06-02</est:dtMovimento>
+ <est:quantidade>1</est:quantidade>
+ <est:vlUnitario>5</est:vlUnitario>
+ Versão Manual: 3.6.2 - Data: 10/03/2022
+www.rsdata.com.br Página: 67/76
+ </est:movimento>
+ </est:movimentos>
+ </est:estoque>
+ </est:estoques>
+ </est:rsdata>
+ </est:insertEstoquesRequest>
+ </soapenv:Body>
+</soapenv:Envelope>
