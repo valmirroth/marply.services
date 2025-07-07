@@ -1,0 +1,28 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:emp="http://rsdata.com.br/ws/empregado">
+<soapenv:Header>
+<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+   <wsse:UsernameToken wsu:Id="UsernameToken-1">
+	  <wsse:Username>{{ .Usuario }}</wsse:Username>
+	  <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{{ .Senha }}</wsse:Password>
+   </wsse:UsernameToken>
+</wsse:Security>
+</soapenv:Header>
+   <soapenv:Body>
+      <emp:getEmpregadosRequest>
+         <emp:rsdata versao="1">
+            <emp:config>
+               <!--Optional:-->
+               <emp:tpVerEmpregado>MATRICULA</emp:tpVerEmpregado>
+               <!--Optional:-->
+            </emp:config>
+            <emp:empregados>
+               <!--1 or more repetitions:-->
+               <emp:empregado>
+                  <emp:idEmpresa>{{ .Empresa }}</emp:idEmpresa>
+                  <emp:idEmpregado>{{ .Matricula }}</emp:idEmpregado>
+               </emp:empregado>
+            </emp:empregados>
+         </emp:rsdata>
+      </emp:getEmpregadosRequest>
+   </soapenv:Body>
+</soapenv:Envelope>
