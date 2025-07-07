@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Custo Médio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .form-container {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+        
+        .checkbox-group {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .checkbox-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+        
+        .checkbox-item label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .btn-executar {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn-executar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-executar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .status-container.show {
+            display: block;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1976d2;
+            font-weight: 500;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e0e0e0;
+            border-top: 2px solid #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success {
+            color: #4caf50;
+            font-weight: 600;
+        }
+        
+        .error {
+            color: #f44336;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Analisador de Custo Médio</h1>
+            <p>Configure o período e tipos de relatório</p>
+        </div>
+        
+        <div class="navigation" style="padding: 20px; text-align: center; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <a href="/" style="display: inline-block; padding: 10px 20px; margin: 0 10px; background: #1976d2; color: white; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease;">🚀 Nova Análise</a>
+                <a href="/analisar" style="display: inline-block; padding: 10px 20px; margin: 0 10px; background: #1976d2; color: white; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease;">🔍 Analisar Resultados</a>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="color: #666; font-size: 0.9em;">👤 {{ user.get('username', user.get('name', 'Usuário')) }}</span>
+                <a href="/logout" style="display: inline-block; padding: 8px 16px; background: #f44336; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9em;">🚪 Sair</a>
+            </div>
+        </div>
+        
+        <div class="form-container">
+            <form id="formAnalise">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mes">📅 Mês</label>
+                        <select id="mes" name="mes" required>
+                            <option value="1" {{ 'selected' if mes_atual == 1 else '' }}>Janeiro</option>
+                            <option value="2" {{ 'selected' if mes_atual == 2 else '' }}>Fevereiro</option>
+                            <option value="3" {{ 'selected' if mes_atual == 3 else '' }}>Março</option>
+                            <option value="4" {{ 'selected' if mes_atual == 4 else '' }}>Abril</option>
+                            <option value="5" {{ 'selected' if mes_atual == 5 else '' }}>Maio</option>
+                            <option value="6" {{ 'selected' if mes_atual == 6 else '' }}>Junho</option>
+                            <option value="7" {{ 'selected' if mes_atual == 7 else '' }}>Julho</option>
+                            <option value="8" {{ 'selected' if mes_atual == 8 else '' }}>Agosto</option>
+                            <option value="9" {{ 'selected' if mes_atual == 9 else '' }}>Setembro</option>
+                            <option value="10" {{ 'selected' if mes_atual == 10 else '' }}>Outubro</option>
+                            <option value="11" {{ 'selected' if mes_atual == 11 else '' }}>Novembro</option>
+                            <option value="12" {{ 'selected' if mes_atual == 12 else '' }}>Dezembro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ano">🗓️ Ano</label>
+                        <select id="ano" name="ano" required>
+                            <option value="{{ ano_atual - 1 }}">{{ ano_atual - 1 }}</option>
+                            <option value="{{ ano_atual }}" selected>{{ ano_atual }}</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="empresa">🏢 Empresa</label>
+                        <select id="empresa" name="empresa" required>
+                            <option value="1" selected>Matriz</option>
+                            <option value="5">Filial</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>📋 Tipos de Relatório</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="incluir_custo" name="incluir_custo" checked>
+                            <label for="incluir_custo">
+                                <strong>Diferenças de Custo Médio</strong><br>
+                                <small>Identifica itens com divergências no cálculo do custo médio</small>
+                            </label>
+                        </div>
+                        
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="incluir_saldo" name="incluir_saldo" checked>
+                            <label for="incluir_saldo">
+                                <strong>Diferenças de Saldo</strong><br>
+                                <small>Identifica itens com divergências no saldo calculado</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="btn-container">
+                    <button type="submit" class="btn-executar" id="btnExecutar">
+                        🚀 Executar Análise
+                    </button>
+                </div>
+            </form>
+            
+            <div class="status-container" id="statusContainer">
+                <div id="statusContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('formAnalise');
+        const btnExecutar = document.getElementById('btnExecutar');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusContent = document.getElementById('statusContent');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            
+            // Verificar se pelo menos um tipo foi selecionado
+            if (!formData.get('incluir_custo') && !formData.get('incluir_saldo')) {
+                alert('Selecione pelo menos um tipo de relatório!');
+                return;
+            }
+            
+            btnExecutar.disabled = true;
+            statusContainer.classList.add('show');
+            statusContent.innerHTML = '<div class="loading"><div class="spinner"></div>Iniciando análise...</div>';
+            
+            try {
+                const response = await fetch('/executar', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.erro || 'Erro desconhecido');
+                }
+                
+                // Iniciar polling do status
+                pollStatus();
+                
+            } catch (error) {
+                statusContent.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+                btnExecutar.disabled = false;
+            }
+        });
+        
+        async function pollStatus() {
+            try {
+                const response = await fetch('/status');
+                const status = await response.json();
+                
+                if (status.executando) {
+                    statusContent.innerHTML = `<div class="loading"><div class="spinner"></div>${status.progresso}</div>`;
+                    setTimeout(pollStatus, 1000);
+                } else if (status.erro) {
+                    statusContent.innerHTML = `<div class="error">❌ Erro: ${status.erro}</div>`;
+                    btnExecutar.disabled = false;
+                } else {
+                    statusContent.innerHTML = `<div class="success">✅ ${status.resultado}</div>`;
+                    btnExecutar.disabled = false;
+                }
+            } catch (error) {
+                statusContent.innerHTML = `<div class="error">❌ Erro ao verificar status: ${error.message}</div>`;
+                btnExecutar.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

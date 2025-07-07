@@ -1,0 +1,29 @@
+2025/07/09 10:06:10.157639 ERROR: Arquivo de configuração não existe: c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json
+2025/07/09 10:06:10.158323 ERROR: Erro ao obter path do config: CreateFile c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:06:10.158323 ERROR: Falha ao ler arquivo c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: open c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:06:10.158868 ERROR: Falha ao parsear JSON do config: unexpected end of JSON input
+2025/07/09 10:07:54.648509 ERROR: Arquivo de configuração não existe: c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json
+2025/07/09 10:07:54.649052 ERROR: Erro ao obter path do config: CreateFile c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:07:54.649052 ERROR: Falha ao ler arquivo c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: open c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:07:54.649052 ERROR: Falha ao parsear JSON do config: unexpected end of JSON input
+2025/07/09 10:08:26.765827 ERROR: Arquivo de configuração não existe: c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json
+2025/07/09 10:08:26.766354 ERROR: Erro ao obter path do config: CreateFile c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:08:26.766354 ERROR: Falha ao ler arquivo c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: open c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:08:26.766354 ERROR: Falha ao parsear JSON do config: unexpected end of JSON input
+2025/07/09 10:09:20.294675 ERROR: Arquivo de configuração não existe: c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json
+2025/07/09 10:09:20.294675 ERROR: Erro ao obter path do config: CreateFile c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:09:20.294675 ERROR: Falha ao ler arquivo c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: open c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:09:20.294675 ERROR: Falha ao parsear JSON do config: unexpected end of JSON input
+2025/07/09 10:10:10.434694 ERROR: Arquivo de configuração não existe: c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json
+2025/07/09 10:10:10.434694 ERROR: Erro ao obter path do config: CreateFile c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:10:10.435211 ERROR: Falha ao ler arquivo c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: open c:\Github\StratPulse\marply.services\rsdata\cmd\app\data\globalconfig.json: The system cannot find the path specified.
+2025/07/09 10:10:10.435211 ERROR: Falha ao parsear JSON do config: unexpected end of JSON input
+2025/07/09 16:05:08.737063 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 16:06:48.273322 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 16:07:26.795511 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:45:33.328762 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:45:50.345122 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:50:42.640504 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:50:46.734378 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:54:15.854340 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44
+2025/07/09 17:54:16.840093 ERROR: CodIntegracaoEpi vazio para o EPI: CALÇA DE UNIFORME FEMININA TAMANHO 44

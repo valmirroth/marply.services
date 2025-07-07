@@ -1,0 +1,48 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:epi="http://rsdata.com.br/ws/epiEstoqueService">
+<soapenv:Header>
+<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+   <wsse:UsernameToken wsu:Id="UsernameToken-1">
+	  <wsse:Username>integracao.db0922mariniind@rsdata.com.br</wsse:Username>
+	  <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">21753ef24af23bd6cc64435a1a4b4137</wsse:Password>
+   </wsse:UsernameToken>
+</wsse:Security>
+</soapenv:Header>
+   <soapenv:Body>
+      <epi:insertEstoqueRequest>
+         <epi:rsdata versao="1">
+            <epi:config>
+               <epi:tpVerEstoque>CODIGO</epi:tpVerEstoque>
+            </epi:config>
+            <epi:estoques>
+               <epi:estoque>
+                  <epi:epi>
+                     <epi:epiID/>
+                     <epi:codIntegracaoEpi>57405</epi:codIntegracaoEpi>
+                     <epi:nomeEpi/>
+                     <epi:gradeTamanho>
+                      <epi:codIntegracaoEpiGradeTamanho>M</epi:codIntegracaoEpiGradeTamanho>
+                     </epi:gradeTamanho>
+                  </epi:epi>
+                  <epi:movimento>
+                     <epi:tpMovimento>ENTRADA</epi:tpMovimento>
+                     <epi:idLocalEstoque/>
+                     <epi:nomeLocalEstoque/>
+                     <epi:codIntegracaoLocalEstoque>2</epi:codIntegracaoLocalEstoque>
+                     <epi:localEstoqueDestino>
+                        <epi:idLocalEstoqueDestino/>
+                        <epi:nomeLocalEstoqueDestino/>
+                        <epi:codIntegracaoLocalEstoqueDestino>2</epi:codIntegracaoLocalEstoqueDestino>
+                     </epi:localEstoqueDestino>
+                     <epi:estoqueMin>?</epi:estoqueMin>
+                     <epi:estoqueMax>?</epi:estoqueMax>
+                     <epi:dtMovimento>2023-08-09</epi:dtMovimento>
+                     <epi:quantidade>1</epi:quantidade>
+                     <epi:vlUnitario>0</epi:vlUnitario>
+                     <epi:txObs>Entrada do EPI</epi:txObs>
+                  </epi:movimento>
+               </epi:estoque>
+            </epi:estoques>
+         </epi:rsdata>
+      </epi:insertEstoqueRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,48 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:epi="http://rsdata.com.br/ws/epiEstoqueService">
+<soapenv:Header>
+<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+   <wsse:UsernameToken wsu:Id="UsernameToken-1">
+	  <wsse:Username>{{ .Usuario }}</wsse:Username>
+	  <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{{ .Senha }}</wsse:Password>
+   </wsse:UsernameToken>
+</wsse:Security>
+</soapenv:Header>
+   <soapenv:Body>
+      <epi:insertEstoqueRequest>
+         <epi:rsdata versao="1">
+            <epi:config>
+               <epi:tpVerEstoque>CODIGO</epi:tpVerEstoque>
+            </epi:config>
+            <epi:estoques>
+               <epi:estoque>
+                  <epi:epi>
+                     <epi:epiID/>
+                     <epi:codIntegracaoEpi>{{ .CodInterno }}</epi:codIntegracaoEpi>
+                     <epi:nomeEpi/>
+                     <epi:gradeTamanho>
+                      <epi:codIntegracaoEpiGradeTamanho>{{ .TamanhoGrade }}</epi:codIntegracaoEpiGradeTamanho>
+                     </epi:gradeTamanho>
+                  </epi:epi>
+                  <epi:movimento>
+                     <epi:tpMovimento>{{ .TpMovimento }}</epi:tpMovimento>
+                     <epi:idLocalEstoque/>
+                     <epi:nomeLocalEstoque/>
+                     <epi:codIntegracaoLocalEstoque>{{ .LocalEstoque }}</epi:codIntegracaoLocalEstoque>
+                     <epi:localEstoqueDestino>
+                        <epi:idLocalEstoqueDestino/>
+                        <epi:nomeLocalEstoqueDestino/>
+                        <epi:codIntegracaoLocalEstoqueDestino>{{ .LocalEstoque }}</epi:codIntegracaoLocalEstoqueDestino>
+                     </epi:localEstoqueDestino>
+                     <epi:estoqueMin>?</epi:estoqueMin>
+                     <epi:estoqueMax>?</epi:estoqueMax>
+                     <epi:dtMovimento>{{ .DtMovimento }}</epi:dtMovimento>
+                     <epi:quantidade>{{ .Quantidade }}</epi:quantidade>
+                     <epi:vlUnitario>{{ .VlUnitario }}</epi:vlUnitario>
+                     <epi:txObs>Entrada do EPI</epi:txObs>
+                  </epi:movimento>
+               </epi:estoque>
+            </epi:estoques>
+         </epi:rsdata>
+      </epi:insertEstoqueRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

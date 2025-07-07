@@ -1,0 +1,14 @@
+{
+   "DBService": {
+      "SQLServerAddress": "192.168.1.28",
+      "SqlServerUser": "Octopus",
+      "AccessPort": "1433",
+      "SqlServerPassword": "A45182008069199",
+      "DataBase": "Marini_prd"
+   },
+   "Vstoken": "nãoalteraraqui",
+   "KorpUser": "",
+   "KorpPass": "",
+   "SelectedDB": "Marini_prd",
+   "IntervaloSincronismo": 120
+}

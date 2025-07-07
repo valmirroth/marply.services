@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # API em Go
+  inventory-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile.windows
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_SERVER=sqlserver
+      - DB_PORT=1433
+      - DB_NAME=InventoryDB
+      - DB_USER=sa
+      - DB_PASSWORD=YourStrongPassword123!
+      - API_PORT=8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - inventory-network
+    restart: unless-stopped
+
+  # SQL Server para Windows
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrongPassword123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./database:/scripts
+    networks:
+      - inventory-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrongPassword123! -Q 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # Inicializador do banco (executa scripts SQL)
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./database:/scripts
+    networks:
+      - inventory-network
+    command: >
+      bash -c "
+        sleep 30
+        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrongPassword123! -Q 'CREATE DATABASE InventoryDB'
+        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrongPassword123! -d InventoryDB -i /scripts/create_table.sql
+      "
+    restart: "no"
+
+volumes:
+  sqlserver_data:
+    driver: local
+
+networks:
+  inventory-network:
+    driver: bridge

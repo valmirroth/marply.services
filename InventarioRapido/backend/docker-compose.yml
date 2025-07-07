@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # API em Go
+  inventory-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_SERVER=sqlserver
+      - DB_PORT=1433
+      - DB_NAME=InventoryDB
+      - DB_USER=sa
+      - DB_PASSWORD=YourStrongPassword123!
+      - API_PORT=8080
+    depends_on:
+      - sqlserver
+    networks:
+      - inventory-network
+
+  # SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrongPassword123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - inventory-network
+
+volumes:
+  sqlserver_data:
+
+networks:
+  inventory-network:
+    driver: bridge
