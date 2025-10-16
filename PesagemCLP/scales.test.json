@@ -1,0 +1,4 @@
+[
+  {"id_balanca": "Balanca_VALIDA", "plc_ip": "192.168.1.250", "rack": 0, "slot": 1, "pulse_byte": 50, "pulse_bit": 1, "weight_db": 11, "weight_offset": 0, "poll_interval_s": 0.5},
+  {"id_balanca": "Balanca_INVALIDA", "plc_ip": "10.255.255.99", "rack": 0, "slot": 1, "pulse_byte": 50, "pulse_bit": 1, "weight_db": 11, "weight_offset": 0, "poll_interval_s": 0.5}
+]

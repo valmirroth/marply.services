@@ -1,0 +1,19 @@
+services:
+  balanca-clp:
+    build: .
+    image: balanca-clp:latest
+    container_name: balanca-clp
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:${WEB_PORT:-8080}"
+    env_file:
+      - .env
+    volumes:
+      - ./scales.json:/app/scales.json:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+# Em host Linux com CLPs em outra subnet, pode ser necessário trocar
+# "ports: [...]" por "network_mode: host" e remover o block ports.

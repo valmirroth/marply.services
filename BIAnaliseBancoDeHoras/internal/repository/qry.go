@@ -13,7 +13,7 @@ select codcal, codbh, perref, sitafa,
 		resumo.ValHoraMes, ValHoraCalculado, resumo.dessit, 
 		resumo.codsit, SUM(qtdhor) as horas, horamin, (ValHoraCalculado * SUM( resumo.qtdhor ) ) as [R$ valor]
 		from (
-		SELECT ( select codbhr from r038hsi where numcad = r034fun.numcad and numemp = r034fun.numemp  and tipcol = r034fun.tipcol
+		SELECT ( select case when codbhr = 0 and numcad in ('7259','344756') then 5 else codbhr end from r038hsi where numcad = r034fun.numcad and numemp = r034fun.numemp  and tipcol = r034fun.tipcol
 				and datalt = (
 							select max(datalt) from r038hsi 
 							where 
@@ -27,7 +27,7 @@ select codcal, codbh, perref, sitafa,
 			cast(r034fun.numcad  as varchar) +' - '+ r034fun.nomfun as Colaborador,
 			CAST(r034fun.numcad AS VARCHAR) AS CRACHA,               
 			r066apu.numemp,       
-			case when datafa >= '20260326' then 1 else r034fun.sitafa end as sitafa,       
+			case when datafa >= '20260226' then 1 else r034fun.sitafa end as sitafa,       
 			r066apu.numcad,               
 			r066apu.datapu,               
 			r066apu.tipcol,              
@@ -87,13 +87,13 @@ select codcal, codbh, perref, sitafa,
 			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20250826'))
 			--and r034fun.codccu in ('cc103','cc789','cc252')
 			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20260326'
+			and convert(varchar,(r066sit.datapu),112) < '20260226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (5)  )  )
 			and codfil in (1,5)
 		) as resumo
 		where CRACHA <> 6065 
 				and numemp = 1
-			--and CRACHA = '7054'
+		--	and CRACHA = '4223'
 			and codbh = 5
 	group by codcal, codbh, perref, codccu, sitafa,
 			dtApuracao, codfil, resumo.CRACHA, 
@@ -125,7 +125,7 @@ select codcal, codbh, perref, sitafa,
 			cast(r034fun.numcad  as varchar) +' - '+ r034fun.nomfun as Colaborador,
 			CAST(r034fun.numcad AS VARCHAR) AS CRACHA,               
 			r066apu.numemp,       
-			case when datafa >= '20260326' then 1 else r034fun.sitafa end as sitafa,      
+			case when datafa >= '20251126' then 1 else r034fun.sitafa end as sitafa,      
 			r066apu.numcad,               
 			r066apu.datapu,               
 			r066apu.tipcol,              
@@ -173,7 +173,7 @@ select codcal, codbh, perref, sitafa,
 			case when sit.codsit in (230,109,336) then 230 else sit.codsit end as codsit,
 			case when sit.codsit in (230,109,336) then (r066sit.qtdhor/60.000) * (-1) else (r066sit.qtdhor/60.000)  end qtdhor,
 			r066sit.qtdhor horamin
-		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20250326') r066sit
+		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20250926') r066sit
 			left join r066apu on  r066sit.numemp = r066apu.numemp and r066sit.tipcol = r066apu.tipcol and r066sit.numcad = r066apu.numcad           
 			and r066sit.datapu = r066apu.datapu
 			left join r034fun (nolock) on r034fun.numcad = r066apu.numcad   
@@ -185,21 +185,21 @@ select codcal, codbh, perref, sitafa,
 			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20250826'))
 			--and r034fun.codccu in ('cc103','cc789','cc252')
 			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20260326'
+			and convert(varchar,(r066sit.datapu),112) < '20260226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (5)  )  )
 			and codfil in (1,5)
 		) as resumo
 		where CRACHA <> 6065 
 				and numemp = 1
-			--and CRACHA = '7054'
-			and codbh = 5
+	--	and CRACHA = '4223'
+			and codbh =5
 	group by codcal, codbh, perref, codccu, sitafa,
 			dtApuracao, codfil, resumo.CRACHA, 
 			ValHoraCalculado, Colaborador, resumo.numcad, 
 			resumo.numemp,  resumo.tipcol, resumo.ValHoraMes, 
 			resumo.dessit, resumo.codsit, horamin
 ) as resumo
-order by numemp, numcad, tipcol, dtApuracao asc `
+order by numemp asc, numcad asc, tipcol asc, dtApuracao asc `
 
 const qryMensal = `select codcal, codbh, perref, sitafa,
 		codccu, dtApuracao, codfil, 
@@ -287,15 +287,15 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20251026'
+			and convert(varchar,( r066sit.datapu),112) >= '20260126' 
+			and convert(varchar,(r066sit.datapu),112) < '20260226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
 		where CRACHA <> 6065 
 				and numemp = 1
-			--and CRACHA = '6708'
-			-- and codbh = 8
+		--	and CRACHA = '6708'
+			and codbh = 8
 	group by codcal, codbh, perref, codccu, sitafa,
 			dtApuracao, codfil, resumo.CRACHA, 
 			ValHoraCalculado, Colaborador, resumo.numcad, 
@@ -374,7 +374,7 @@ select codcal, codbh, perref, sitafa,
 			case when sit.codsit in (230,109,336) then 230 else sit.codsit end as codsit,
 			case when sit.codsit in (230,109,336) then (r066sit.qtdhor/60.000) * (-1) else (r066sit.qtdhor/60.000)  end qtdhor,
 			r066sit.qtdhor horamin
-		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20250326') r066sit
+		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20260126') r066sit
 			left join r066apu on  r066sit.numemp = r066apu.numemp and r066sit.tipcol = r066apu.tipcol and r066sit.numcad = r066apu.numcad           
 			and r066sit.datapu = r066apu.datapu
 			left join r034fun (nolock) on r034fun.numcad = r066apu.numcad   
@@ -385,15 +385,15 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20251026'
+			and convert(varchar,( r066sit.datapu),112) >= '20260126' 
+			and convert(varchar,(r066sit.datapu),112) < '20260226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
 		where CRACHA <> 6065 
 				and numemp = 1
 			--and CRACHA = '6708'
-			-- and codbh = 8
+			 and codbh = 8
 	group by codcal, codbh, perref, codccu, sitafa,
 			dtApuracao, codfil, resumo.CRACHA, 
 			ValHoraCalculado, Colaborador, resumo.numcad, 

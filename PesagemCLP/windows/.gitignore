@@ -1,0 +1,4 @@
+.venv/
+snap7/
+nssm.exe
+*.log

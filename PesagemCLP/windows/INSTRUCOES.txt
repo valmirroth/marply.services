@@ -1,0 +1,156 @@
+================================================================
+ BALANCA CLP — Build .exe e instalacao como servico Windows
+================================================================
+
+Este guia cobre como gerar o executavel e instalar como servico
+no Windows Server 2012 (ou qualquer Windows x64).
+
+
+----------------------------------------------------------------
+ PRE-REQUISITOS (no servidor onde vai rodar)
+----------------------------------------------------------------
+
+1) Python 3.9 x64
+   Download: https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe
+   - Durante a instalacao, marque "Add Python to PATH"
+   - Use o 3.9 porque e o ultimo Python com suporte oficial ao Server 2012.
+
+2) Microsoft ODBC Driver 17 for SQL Server
+   Download: https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server
+   - Escolha "Download Microsoft ODBC Driver 17 for SQL Server (x64)"
+   - Instale com defaults.
+
+3) Visual C++ Redistributable 2015-2022 (geralmente ja vem com Python,
+   mas confirme caso de erro):
+   https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+
+----------------------------------------------------------------
+ ARQUIVOS QUE VOCE PRECISA BAIXAR MANUALMENTE
+----------------------------------------------------------------
+
+A) snap7.dll (lib nativa para comunicar com CLP Siemens)
+   1. Abra https://sourceforge.net/projects/snap7/files/1.4.2/
+   2. Baixe "snap7-full-1.4.2.7z"
+   3. Extraia (use 7-Zip: https://www.7-zip.org/)
+   4. Pegue: snap7-full-1.4.2\release\Windows\Win64\snap7.dll
+   5. Coloque em: windows\snap7\snap7.dll
+
+B) nssm.exe (gerenciador de servico Windows)
+   1. Abra https://nssm.cc/download
+   2. Baixe nssm 2.24 (zip)
+   3. Extraia: nssm-2.24\win64\nssm.exe
+   4. Coloque em: windows\nssm.exe
+
+
+----------------------------------------------------------------
+ ARQUIVOS DE CONFIGURACAO (raiz do projeto)
+----------------------------------------------------------------
+
+C:\Containers\BalancaCLP\.env           <- credenciais do banco
+C:\Containers\BalancaCLP\scales.json    <- lista das 4 balancas
+
+Edite esses arquivos com os IPs/credenciais reais ANTES de instalar
+o servico.
+
+
+----------------------------------------------------------------
+ PASSO A PASSO
+----------------------------------------------------------------
+
+1) Abra o PowerShell COMO ADMINISTRADOR
+
+2) Permita execucao dos scripts (so na primeira vez):
+   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+3) Va para a pasta do projeto:
+   cd C:\Containers\BalancaCLP
+
+4) Gere o executavel:
+   .\windows\build.ps1
+
+   Saida esperada: dist\BalancaCLP\BalancaCLP.exe
+
+5) Teste o executavel manualmente (opcional, mas recomendado):
+   .\dist\BalancaCLP\BalancaCLP.exe
+   - Abra http://localhost:8080 em outro terminal/browser
+   - Ctrl+C para parar
+
+6) Instale como servico:
+   .\windows\install_service.ps1
+
+   O script vai:
+   - Criar o servico "BalancaCLP" (auto-start)
+   - Configurar restart automatico em caso de falha
+   - Carregar variaveis do .env
+   - Forcar SCALES_CONFIG_PATH para o scales.json da raiz do projeto
+   - Iniciar o servico
+
+7) Verifique:
+   - services.msc -> "Balanca CLP Integration" deve estar "Running"
+   - Abra http://localhost:8080 no browser do proprio servidor
+   - Logs em: logs\balanca-stdout.log e logs\balanca-stderr.log
+
+
+----------------------------------------------------------------
+ ACESSO A UI DE OUTRA MAQUINA (LAN)
+----------------------------------------------------------------
+
+Para acessar http://<ip-do-servidor>:8080 de outra maquina, abra
+porta 8080 no firewall do Windows Server:
+
+   New-NetFirewallRule -DisplayName "BalancaCLP Web UI" `
+       -Direction Inbound -Protocol TCP -LocalPort 8080 `
+       -Action Allow
+
+
+----------------------------------------------------------------
+ GERENCIAMENTO DO SERVICO
+----------------------------------------------------------------
+
+Parar:           Stop-Service BalancaCLP    (ou nssm stop BalancaCLP)
+Iniciar:         Start-Service BalancaCLP   (ou nssm start BalancaCLP)
+Status:          Get-Service BalancaCLP
+Editar config:   nssm edit BalancaCLP       (GUI; precisa Admin)
+Ver logs:        Get-Content logs\balanca-stdout.log -Tail 50 -Wait
+Remover:         .\windows\uninstall_service.ps1
+
+
+----------------------------------------------------------------
+ ATUALIZAR O EXECUTAVEL APOS MUDANCAS NO CODIGO
+----------------------------------------------------------------
+
+1) Stop-Service BalancaCLP
+2) .\windows\build.ps1
+3) Start-Service BalancaCLP
+
+A pasta dist\BalancaCLP\ e regenerada; .env e scales.json
+permanecem intactos (ficam na raiz, fora do bundle).
+
+
+----------------------------------------------------------------
+ SOLUCAO DE PROBLEMAS
+----------------------------------------------------------------
+
+* "ImportError: DLL load failed" no startup
+  -> Faltou Visual C++ Redistributable. Instale o vc_redist.x64.exe.
+
+* "Can't open lib 'ODBC Driver 17 for SQL Server'"
+  -> Faltou instalar o msodbcsql17 no servidor. Veja pre-requisitos.
+
+* Servico inicia e para imediatamente
+  -> Veja logs\balanca-stderr.log para o stack trace.
+
+* Erro "TCP : Unreachable peer" persistente em todas as balancas
+  -> Confira se o servidor enxerga os CLPs na rede:
+     Test-NetConnection 192.168.1.250 -Port 102
+
+* Servico nao sobe junto com o Windows
+  -> Verifique: Get-Service BalancaCLP | Select StartType
+     Deve estar "Automatic". Se nao, rode:
+     Set-Service -Name BalancaCLP -StartupType Automatic
+
+* "snap7.dll not found"
+  -> Voce esqueceu de copiar o snap7.dll para windows\snap7\snap7.dll
+     antes de rodar build.ps1. Veja secao "ARQUIVOS QUE VOCE PRECISA
+     BAIXAR MANUALMENTE".

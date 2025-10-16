@@ -1,0 +1,5 @@
+python-snap7==1.4.1
+pyodbc==5.1.0
+tenacity==9.0.0
+flask==3.0.3
+waitress==3.0.0

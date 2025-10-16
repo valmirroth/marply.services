@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balança CLP — Monitor</title>
+  <style>
+    :root {
+      --bg: #0b1016;
+      --bg-2: #0f1722;
+      --panel: #161d28;
+      --panel-2: #1d2535;
+      --border: #243042;
+      --text: #e6edf3;
+      --text-dim: #b1bac4;
+      --muted: #6e7a8a;
+      --ok: #3fb950;
+      --ok-soft: rgba(63, 185, 80, 0.16);
+      --warn: #e3b341;
+      --warn-soft: rgba(227, 179, 65, 0.16);
+      --err: #f85149;
+      --err-soft: rgba(248, 81, 73, 0.18);
+      --err-bg: #2e1418;
+      --err-bg-2: #3f181c;
+      --accent: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(88, 166, 255, 0.06), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(63, 185, 80, 0.04), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------------- Header ---------------- */
+    header {
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(11, 16, 22, 0.6);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .brand-logo {
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #58a6ff 0%, #3fb950 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: #0b1016;
+      letter-spacing: -0.5px;
+    }
+    header h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.2px; }
+    header .subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    header .meta { color: var(--muted); font-size: 12px; text-align: right; }
+    header .meta .stats-err { color: var(--err); display: block; margin-top: 2px; }
+
+    main { padding: 24px 32px 48px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      gap: 18px;
+      width: 100%;
+    }
+    /* Em telas estreitas, força 2 colunas para os cards não ficarem pequenos demais */
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* ---------------- Scale card ---------------- */
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
+    .card.connected { border-color: rgba(63, 185, 80, 0.35); }
+    .card.has-error {
+      background: linear-gradient(180deg, var(--err-bg) 0%, var(--err-bg-2) 100%);
+      border-color: var(--err);
+      box-shadow: 0 0 0 1px var(--err), 0 0 24px rgba(248, 81, 73, 0.25);
+    }
+
+    .card-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .card-title {
+      font-size: 15px; font-weight: 700;
+      letter-spacing: -0.2px;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .card-title .indicator {
+      width: 6px; height: 16px; border-radius: 2px;
+      background: var(--muted);
+    }
+    .card.connected .card-title .indicator { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .card.has-error .card-title .indicator { background: var(--err); box-shadow: 0 0 8px var(--err); }
+
+    .status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; padding: 4px 10px; border-radius: 999px;
+      background: var(--panel-2); font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .status.ok { background: var(--ok-soft); color: #7ee787; }
+    .status.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .status.err { background: var(--err-soft); color: #ffb3b0; }
+    .status.err .dot { background: var(--err); box-shadow: 0 0 8px var(--err); animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ---------------- Stats row (right below name) ---------------- */
+    .scale-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 14px 18px 0;
+    }
+    .scale-stat {
+      position: relative;
+      padding: 10px 10px 11px;
+      border-radius: 9px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+      border: 1px solid rgba(255,255,255,0.06);
+      text-align: center;
+      transition: transform 0.18s ease, background 0.18s ease;
+      overflow: hidden;
+    }
+    .scale-stat::before {
+      content: "";
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--muted);
+    }
+    .scale-stat::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(60% 60% at 50% 0%, currentColor, transparent 70%);
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .scale-stat.coletado { color: var(--ok); border-color: rgba(63,185,80,0.25); }
+    .scale-stat.coletado::before { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    .scale-stat.pendente { color: var(--warn); border-color: rgba(227,179,65,0.25); }
+    .scale-stat.pendente::before { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+    .scale-stat.cancelado { color: var(--err); border-color: rgba(248,81,73,0.25); }
+    .scale-stat.cancelado::before { background: var(--err); box-shadow: 0 0 10px var(--err); }
+    .scale-stat-label {
+      font-size: 9px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .scale-stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      margin-top: 6px;
+      line-height: 1;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    .card.has-error .scale-stat { background: rgba(0,0,0,0.25); }
+
+    /* ---------------- Weight block (hero) ---------------- */
+    .weight-block {
+      padding: 18px 18px 16px;
+      text-align: center;
+      position: relative;
+    }
+    .weight {
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(180deg, #ffffff 0%, #c4cdd9 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .weight .unit {
+      font-size: 16px; color: var(--muted); font-weight: 600;
+      margin-left: 6px;
+      -webkit-text-fill-color: var(--muted);
+    }
+    .weight.empty {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      -webkit-text-fill-color: var(--muted);
+      background: none;
+    }
+    .weight-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.2px;
+    }
+
+    /* ---------------- Card footer (CLP) ---------------- */
+    .card-footer {
+      padding: 12px 18px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--muted);
+      background: rgba(0,0,0,0.15);
+    }
+    .card-footer .ip {
+      font-family: ui-monospace, "Consolas", monospace;
+      color: var(--text-dim);
+      letter-spacing: 0.2px;
+    }
+
+    /* ---------------- Error box ---------------- */
+    .error-box {
+      margin: 0 18px 16px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid var(--err);
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .error-box .error-label {
+      font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
+      color: #ffb3b0; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .error-box .error-label::before {
+      content: "!"; display: inline-flex; align-items: center; justify-content: center;
+      width: 13px; height: 13px; background: var(--err); color: white;
+      border-radius: 50%; font-size: 9px; font-weight: 800;
+    }
+    .error-box .error-msg {
+      font-size: 11px; color: #ffe4e3;
+      font-family: ui-monospace, "Consolas", monospace;
+      word-break: break-word; line-height: 1.4;
+    }
+    .error-box .error-time { font-size: 9px; color: #ffb3b0; opacity: 0.7; }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div>
+        <h1>Balança CLP — Monitor</h1>
+        <div class="subtitle">Integração Siemens → SQL Server</div>
+      </div>
+    </div>
+    <div class="meta">
+      Atualização: <span id="last-update">—</span>
+      <span class="stats-err" id="stats-err"></span>
+    </div>
+  </header>
+  <main>
+    <div class="grid" id="grid">
+      <div class="empty-state">Carregando…</div>
+    </div>
+  </main>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const lastUpdate = document.getElementById('last-update');
+    const statsErrEl = document.getElementById('stats-err');
+
+    function formatTimestamp(iso) {
+      if (!iso) return null;
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    function formatWeight(w) {
+      if (w === null || w === undefined) return null;
+      return Number(w).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    }
+    function formatCount(n) {
+      if (n === null || n === undefined) return '0';
+      return Number(n).toLocaleString('pt-BR');
+    }
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderScaleStats(stats) {
+      const c = stats || {};
+      return `
+        <div class="scale-stats">
+          <div class="scale-stat coletado">
+            <div class="scale-stat-label">Coletado</div>
+            <div class="scale-stat-value">${formatCount(c['COLETADO'] || 0)}</div>
+          </div>
+          <div class="scale-stat pendente">
+            <div class="scale-stat-label">Pendente</div>
+            <div class="scale-stat-value">${formatCount(c['PENDENTE'] || 0)}</div>
+          </div>
+          <div class="scale-stat cancelado">
+            <div class="scale-stat-label">Cancelado</div>
+            <div class="scale-stat-value">${formatCount(c['CANCELADO'] || 0)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCard(scale) {
+      const hasError = scale.has_error || scale.last_error || !scale.connected;
+      const cardClasses = ['card'];
+      if (hasError) cardClasses.push('has-error');
+      else cardClasses.push('connected');
+
+      const weightStr = formatWeight(scale.last_weight);
+      const ts = formatTimestamp(scale.last_timestamp);
+
+      const weightHtml = weightStr
+        ? `<div class="weight">${weightStr}<span class="unit">kg</span></div>
+           <div class="weight-time">Última pesagem · ${ts || '—'}</div>`
+        : `<div class="weight empty">— sem pesagem —</div>
+           <div class="weight-time">Aguardando primeira pesagem</div>`;
+
+      const errorBlock = scale.last_error ? `
+        <div class="error-box">
+          <div class="error-label">Erro</div>
+          <div class="error-msg">${escapeHtml(scale.last_error)}</div>
+          ${scale.last_error_at ? `<div class="error-time">em ${formatTimestamp(scale.last_error_at)}</div>` : ''}
+        </div>
+      ` : '';
+
+      return `
+        <article class="${cardClasses.join(' ')}">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="indicator"></span>
+              ${escapeHtml(scale.id_balanca)}
+            </div>
+            <span class="status ${scale.connected ? 'ok' : 'err'}">
+              <span class="dot"></span>${scale.connected ? 'Conectada' : 'Offline'}
+            </span>
+          </div>
+          ${renderScaleStats(scale.stats)}
+          <div class="weight-block">
+            ${weightHtml}
+          </div>
+          ${errorBlock}
+          <div class="card-footer">
+            <span>CLP</span>
+            <span class="ip">${escapeHtml(scale.plc_ip)}</span>
+          </div>
+        </article>
+      `;
+    }
+
+    async function refresh() {
+      try {
+        const resp = await fetch('/api/scales', { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const payload = await resp.json();
+        const scales = Array.isArray(payload) ? payload : payload.scales;
+        const statsMeta = (payload && payload.stats_meta) || null;
+
+        if (!scales || !scales.length) {
+          grid.innerHTML = '<div class="empty-state">Nenhuma balança configurada.</div>';
+        } else {
+          grid.innerHTML = scales.map(renderCard).join('');
+        }
+
+        statsErrEl.textContent = statsMeta && statsMeta.error
+          ? '· stats: ' + statsMeta.error
+          : '';
+
+        const now = new Date();
+        lastUpdate.textContent = now.toLocaleTimeString('pt-BR');
+      } catch (e) {
+        lastUpdate.textContent = 'Erro: ' + e.message;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>
