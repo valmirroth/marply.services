@@ -287,8 +287,8 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20251026'
+			and convert(varchar,( r066sit.datapu),112) >= '20251126' 
+			and convert(varchar,(r066sit.datapu),112) < '20251226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
@@ -385,8 +385,8 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20250926' 
-			and convert(varchar,(r066sit.datapu),112) < '20251026'
+			and convert(varchar,( r066sit.datapu),112) >= '20251126' 
+			and convert(varchar,(r066sit.datapu),112) < '20251226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
