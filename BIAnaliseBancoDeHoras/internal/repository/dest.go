@@ -37,7 +37,7 @@ func DeleteAll(ctx context.Context, connStr, tblDetalhado, tblResumo string) (in
 		if strings.TrimSpace(t) == "" {
 			continue
 		}
-		res, e := tx.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s where perref >= '20250902' ;", t))
+		res, e := tx.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s where perref >= '20250902' and codbh = '5' ;", t))
 		if e != nil {
 			err = e
 			break
@@ -54,6 +54,48 @@ func DeleteAll(ctx context.Context, connStr, tblDetalhado, tblResumo string) (in
 	}
 	return aff[0], aff[1], nil
 }
+
+func DeleteAllBhMonth(ctx context.Context, connStr, tblDetalhado, tblResumo string) (int64, int64, error) {
+	db, err := sql.Open("sqlserver", connStr)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer db.Close()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	tables := []string{tblDetalhado, tblResumo}
+	var aff [2]int64
+	for i, t := range tables {
+		if strings.TrimSpace(t) == "" {
+			continue
+		}
+		res, e := tx.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s where dtApuracao >= '20251126' and codbh = '8' ;", t))
+		if e != nil {
+			err = e
+			break
+		}
+		a, _ := res.RowsAffected()
+		aff[i] = a
+	}
+	if err != nil {
+		_ = tx.Rollback()
+		return aff[0], aff[1], err
+	}
+	if err = tx.Commit(); err != nil {
+		return aff[0], aff[1], err
+	}
+	return aff[0], aff[1], nil
+}
+
 func normalizePerRef(input string, dtApuracao *time.Time) (string, error) {
 	// Tenta formatos comuns: RFC3339, YYYY-MM-DD, YYYYMM, YYYY-MM
 	layouts := []string{
@@ -120,6 +162,7 @@ func InsertDetalhado(ctx context.Context, connStr, table string, rows []model.Pr
 	defer stmt.Close()
 
 	var total int64
+	var bancoUsadoTotal float64
 	for _, r := range rows {
 		x := r.DtApuracao.Format("2006-01-02")
 		perApuStr, erres := normalizePerRef(x, r.DtApuracao)
@@ -127,7 +170,7 @@ func InsertDetalhado(ctx context.Context, connStr, table string, rows []model.Pr
 			_ = tx.Rollback()
 			return total, fmt.Errorf("perref inválido (%q): %w", r.PerRef, erres)
 		}
-
+		bancoUsadoTotal += r.HorasSaldo
 		// perref como "YYYY-MM-DD" (dia 1 do mês)
 		perrefStr, erre := normalizePerRef(r.PerRef, r.DtApuracao)
 		if erre != nil {
@@ -144,6 +187,7 @@ func InsertDetalhado(ctx context.Context, connStr, table string, rows []model.Pr
 			return total, err
 		}
 		total++
+		println(bancoUsadoTotal)
 	}
 	if err := tx.Commit(); err != nil {
 		return total, err

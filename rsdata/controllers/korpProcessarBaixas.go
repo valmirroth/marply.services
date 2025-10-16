@@ -14,7 +14,7 @@ import (
 func limparBaixasDiaAnterior(korp *service.EntradaNFService) error {
 	// Limpa os dados de baixa do dia anterior
 	hojes := time.Now()
-	for i := -3; i <= 0; i++ {
+	for i := -2; i <= 0; i++ {
 		z := i
 		diaAnterior := hojes.AddDate(0, 0, z)
 		fmt.Println("Limpando registro referentes a: " + diaAnterior.Format("02/01/2006"))

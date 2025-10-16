@@ -144,7 +144,17 @@ def run_job():
                     ) as EstoqueMedio,
                     HISREAL.CUSTO_MEDIO
             from HISREAL 
-                inner join ESTOQUE_HIST_MOVIMENTACAO_EFETIVA on ESTOQUE_HIST_MOVIMENTACAO_EFETIVA.RECNO_HISREAL = HISREAL.R_E_C_N_O_ and ESTOQUE_HIST_MOVIMENTACAO_EFETIVA.ORIGEM_MOVIMENTACAO <> 'InspecaoEntrada'
+           inner join 
+                    (
+                        SELECT RECNO_HISREAL, ORIGEM_MOVIMENTACAO FROM ESTOQUE_HIST_MOVIMENTACAO_EFETIVA 
+                        UNION ALL 
+                        select hisreal.R_E_C_N_O_ AS RECNO_HISREAL, 'INVENTARIO' ORIGEM_MOVIMENTACAO  from hisreal  
+                            LEFT JOIN ESTOQUE_HIST_MOVIMENTACAO_EFETIVA ON ESTOQUE_HIST_MOVIMENTACAO_EFETIVA.RECNO_HISREAL = HISREAL.R_E_C_N_O_ 
+                        WHERE DOCUMEN LIKE 'INV.%' AND FORMA IN ('E','S')
+                            AND MOV_EFETIVA = 'S'
+                            AND DTRECEB >='20250101'
+                            AND HISREAL.EMPRESA_RECNO = 5
+                    ) AS ESTOQUE_HIST_MOVIMENTACAO_EFETIVA on ESTOQUE_HIST_MOVIMENTACAO_EFETIVA.RECNO_HISREAL = HISREAL.R_E_C_N_O_ and ESTOQUE_HIST_MOVIMENTACAO_EFETIVA.ORIGEM_MOVIMENTACAO <> 'InspecaoEntrada'
                 INNER JOIN ESTOQUE ON ESTOQUE.CODIGO = HISREAL.CODIGO  and ESTOQUE.CATEGORIA not in ( '99','10','110')
                 INNER JOIN CLASSE ON CLASSE.CLASSE = ESTOQUE.CATEGORIA
                 LEFT JOIN GRUPOE ON GRUPOE.GRUPO = ESTOQUE.FAMILIA
@@ -282,7 +292,7 @@ def run_job():
         logging.info("Limpando tabela CST_AnaliseGiroEstoque e inserindo novos dados...")
         # Inserir dados no SQL Server
         cursor = conn.cursor()
-        delete_sql = "DELETE FROM CST_AnaliseGiroEstoque"
+        delete_sql = "DELETE FROM CST_AnaliseGiroEstoque where empresarecno = '5'"
         cursor.execute(delete_sql)
         insert_sql = """
         INSERT INTO CST_AnaliseGiroEstoque (EmpresaRecno,

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
@@ -120,7 +121,13 @@ func applyGroup(g []model.RawRow) []model.ProcessedRow {
 		processed[idx].BancoUsadoNaLinha = 0
 		processed[idx].HorasSaldo = 0
 	}
+	var bancoUsadoTotal float64
+	for _, idx := range processed {
 
+		bancoUsadoTotal += idx.HorasSaldo
+
+	}
+	fmt.Println(bancoUsadoTotal)
 	// Se sobrou banco, coloca negativo na linha 230 mais recente
 	if bancoRestante > 0 && len(bank) > 0 {
 		// ordenar bank por dtapuracao desc, perref desc
@@ -156,9 +163,26 @@ func applyGroup(g []model.RawRow) []model.ProcessedRow {
 
 	// calcula ValorSaldo das demais (que ficaram zeradas acima)
 	for i := range processed {
-		if processed[i].ValorSaldo == 0 && processed[i].ValHoraCalculado != 0 {
-			processed[i].ValorSaldo = processed[i].HorasSaldo * processed[i].ValHoraCalculado
+		if processed[i].SitAfa == "7" {
+			processed[i].HorasSaldo = 0
+			if processed[i].ValHoraCalculado != 0 {
+				processed[i].ValorSaldo = processed[i].HorasSaldo * processed[i].ValHoraCalculado
+			}
+		} else {
+
+			if processed[i].ValorSaldo == 0 && processed[i].ValHoraCalculado != 0 {
+				processed[i].ValorSaldo = processed[i].HorasSaldo * processed[i].ValHoraCalculado
+			}
 		}
+
 	}
+	bancoUsadoTotal = 0
+	for _, idx := range processed {
+
+		bancoUsadoTotal += idx.HorasSaldo
+
+	}
+	fmt.Println(bancoUsadoTotal)
+
 	return processed
 }
