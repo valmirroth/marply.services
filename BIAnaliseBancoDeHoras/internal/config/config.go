@@ -14,7 +14,7 @@ type Config struct {
 	InputCSV     string
 	CSVSep       rune
 
-	DestConn     string
+	DestConn string
 
 	TblDetalhado string
 	TblResumo    string
@@ -22,7 +22,7 @@ type Config struct {
 	ClearDest    bool
 	UpsertResumo bool
 
-	HTTPPort     string
+	HTTPPort string
 }
 
 func Load() Config {
@@ -42,7 +42,7 @@ func Load() Config {
 		InputCSV:     getEnv("INPUT_CSV", "./resultado_query.csv"),
 		CSVSep:       csvSep,
 
-		DestConn:     os.Getenv("DEST_SQL_CONNECTION"),
+		DestConn: os.Getenv("DEST_SQL_CONNECTION"),
 
 		TblDetalhado: getEnv("TBL_DETALHADO", "dbo.BH_DetalhadoPosAbatimento"),
 		TblResumo:    getEnv("TBL_RESUMO", "dbo.BH_ResumoMensalSaldo"),
@@ -50,7 +50,7 @@ func Load() Config {
 		ClearDest:    clearDest,
 		UpsertResumo: upsertResumo,
 
-		HTTPPort:     getEnv("HTTP_PORT", ":8080"),
+		HTTPPort: getEnv("HTTP_PORT", ":8093"),
 	}
 
 	// Valida conexões mínimas
@@ -65,11 +65,15 @@ func Load() Config {
 
 func parseBool(s string) bool {
 	b, err := strconv.ParseBool(s)
-	if err != nil { return false }
+	if err != nil {
+		return false
+	}
 	return b
 }
 
 func getEnv(k, d string) string {
-	if v := os.Getenv(k); v != "" { return v }
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
 	return d
 }
