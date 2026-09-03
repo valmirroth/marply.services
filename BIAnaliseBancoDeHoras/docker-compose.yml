@@ -1,0 +1,9 @@
+services:
+  bh-service:
+    build: .
+    container_name: bh-service
+    ports:
+      - "8093:8093"
+    env_file:
+      - .env
+    restart: unless-stopped

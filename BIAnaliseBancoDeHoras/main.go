@@ -54,13 +54,6 @@ func main() {
 			}
 		}
 
-		log.Println("[RUN] Limpando destino...")
-		_, _, errd := repository.DeleteAll(ctx, cfg.DestConn, cfg.TblDetalhado, cfg.TblResumo)
-		if errd != nil {
-			http.Error(w, errd.Error(), 500)
-			return
-		}
-
 		// Carrega origem
 		var rows []model.RawRow
 		var err error

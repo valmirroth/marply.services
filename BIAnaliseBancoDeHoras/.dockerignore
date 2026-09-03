@@ -1,0 +1,6 @@
+.git
+.env
+*.md
+bh_service.py
+bh_process_to_sql_full.py
+resultado_query.csv
