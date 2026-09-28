@@ -134,12 +134,43 @@ func main() {
 	// Query summary (JSON)
 	mux.HandleFunc("/summary", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		perref := normalizePerref(r.URL.Query().Get("perref")) // YYYYMM or empty
+		perrefs := parsePerrefs(r.URL.Query()["perref"]) // um ou mais YYYYMM/YYYY-MM; vazio = todos os períodos
 		numemp := parseInt(r.URL.Query().Get("numemp"))
 		codccu := strings.TrimSpace(r.URL.Query().Get("codccu"))
 		colab := strings.TrimSpace(r.URL.Query().Get("colab"))
 
-		rows, err := querySummary(ctx, cfg, perref, numemp, codccu, colab)
+		rows, err := querySummary(ctx, cfg, perrefs, numemp, codccu, colab)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(rows)
+	})
+
+	// Lista os períodos (perref) já processados, para alimentar o seletor da UI
+	mux.HandleFunc("/periods", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		periods, err := listPeriods(ctx, cfg)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(periods)
+	})
+
+	// Detalhe (linhas do detalhado) de um colaborador em um período, para drill-down na UI
+	mux.HandleFunc("/detail", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		numemp := parseInt(r.URL.Query().Get("numemp"))
+		numcad := parseInt(r.URL.Query().Get("numcad"))
+		perref := strings.TrimSpace(r.URL.Query().Get("perref"))
+		if numemp == nil || numcad == nil || perref == "" {
+			http.Error(w, "parâmetros numemp, numcad e perref são obrigatórios", http.StatusBadRequest)
+			return
+		}
+		rows, err := queryDetail(ctx, cfg, *numemp, *numcad, perref)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -161,15 +192,32 @@ func main() {
 	}
 }
 
-func normalizePerref(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
+// perrefToDate converte "YYYYMM" ou "YYYY-MM" para "YYYY-MM-01", formato
+// em que a coluna perref (tipo date) é gravada pelo /run. Não altera nenhuma
+// regra de cálculo — é usado apenas para consultas de leitura (/summary, /detail).
+func perrefToDate(s string) (string, bool) {
+	s = strings.ReplaceAll(strings.TrimSpace(s), "-", "")
+	if len(s) != 6 {
+		return "", false
 	}
-	if len(s) == 7 && s[4] == '-' { // YYYY-MM -> YYYYMM
-		return s[:4] + s[5:7]
+	if _, err := strconv.Atoi(s); err != nil {
+		return "", false
 	}
-	return s
+	return s[:4] + "-" + s[4:6] + "-01", true
+}
+
+// parsePerrefs limpa e deduplica a lista de períodos vinda da query string (?perref=A&perref=B...).
+func parsePerrefs(raw []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range raw {
+		p = strings.TrimSpace(p)
+		if p != "" && !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func parseInt(s string) *int {
@@ -197,8 +245,9 @@ type SummaryOut struct {
 	BancoTotalAplicadoNoGrupo float64 `json:"banco_total_aplicado_no_grupo"`
 }
 
-// querySummary busca do **Resumo** juntando nome e codccu do detalhado mais recente do mês (para exibir filtros por CCU/Colaborador)
-func querySummary(ctx context.Context, cfg config.Config, perref string, numemp *int, codccu, colab string) ([]SummaryOut, error) {
+// querySummary busca do **Resumo** juntando nome e codccu do detalhado mais recente do mês (para exibir filtros por CCU/Colaborador).
+// perrefs pode conter um ou mais períodos (YYYYMM/YYYY-MM); vazio = sem filtro de período (todos).
+func querySummary(ctx context.Context, cfg config.Config, perrefs []string, numemp *int, codccu, colab string) ([]SummaryOut, error) {
 	db, err := sql.Open("sqlserver", cfg.DestConn)
 	if err != nil {
 		return nil, err
@@ -206,18 +255,37 @@ func querySummary(ctx context.Context, cfg config.Config, perref string, numemp 
 	defer db.Close()
 
 	var where []string
-	if perref != "" {
-		where = append(where, "r.perref = @p1")
+	var args []any
+	// cada filtro usa seu próprio @pN — no código anterior todos reusavam @p1,
+	// o que fazia o SQL Server ignorar os filtros extras quando combinados.
+	param := func() string {
+		return fmt.Sprintf("@p%d", len(args)+1)
+	}
+
+	if len(perrefs) > 0 {
+		var placeholders []string
+		for _, p := range perrefs {
+			if d, ok := perrefToDate(p); ok {
+				placeholders = append(placeholders, param())
+				args = append(args, d)
+			}
+		}
+		if len(placeholders) > 0 {
+			where = append(where, "r.perref IN ("+strings.Join(placeholders, ",")+")")
+		}
 	}
 	if numemp != nil {
-		where = append(where, "r.numemp = @p1")
+		where = append(where, "r.numemp = "+param())
+		args = append(args, *numemp)
 	}
 	// codccu/colab pelo detalhado (pega max dtapuracao por chave dentro do mês)
 	if codccu != "" {
-		where = append(where, "d.codccu LIKE @p1 + '%' ")
+		where = append(where, "d.codccu LIKE "+param()+" + '%' ")
+		args = append(args, codccu)
 	}
 	if colab != "" {
-		where = append(where, "d.colaborador LIKE '%' + @p1 + '%' ")
+		where = append(where, "d.colaborador LIKE '%' + "+param()+" + '%' ")
+		args = append(args, colab)
 	}
 
 	w := ""
@@ -225,9 +293,11 @@ func querySummary(ctx context.Context, cfg config.Config, perref string, numemp 
 		w = "WHERE " + strings.Join(where, " AND ")
 	}
 
+	// ISNULL evita erro de scan quando não há linha correspondente no detalhado (OUTER APPLY sem match).
+	// CONVERT(varchar(6), perref, 112) devolve o período como "YYYYMM", já que a coluna é do tipo date.
 	q := fmt.Sprintf(`
-	SELECT r.numemp, r.numcad, r.perref,
-	       d.colaborador, d.codccu,
+	SELECT r.numemp, r.numcad, CONVERT(varchar(6), r.perref, 112) AS perref,
+	       ISNULL(d.colaborador, '') AS colaborador, ISNULL(d.codccu, '') AS codccu,
 	       r.horas_positivas_original, r.banco_230_consumido_no_mes,
 	       r.horas_saldo_mes, r.valor_saldo_mes, r.banco_total_aplicado_no_grupo
 	FROM %s r
@@ -240,20 +310,6 @@ func querySummary(ctx context.Context, cfg config.Config, perref string, numemp 
 	%s
 	ORDER BY r.perref DESC, r.numemp, r.numcad
 	`, cfg.TblResumo, cfg.TblDetalhado, w)
-
-	args := []any{}
-	if perref != "" {
-		args = append(args, perref)
-	}
-	if numemp != nil {
-		args = append(args, *numemp)
-	}
-	if codccu != "" {
-		args = append(args, codccu)
-	}
-	if colab != "" {
-		args = append(args, colab)
-	}
 
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -276,37 +332,153 @@ func querySummary(ctx context.Context, cfg config.Config, perref string, numemp 
 	return out, rows.Err()
 }
 
-var uiHTML = `<!doctype html> 
+// listPeriods devolve os períodos (YYYYMM) já existentes no resumo, para alimentar o seletor da UI.
+func listPeriods(ctx context.Context, cfg config.Config) ([]string, error) {
+	db, err := sql.Open("sqlserver", cfg.DestConn)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	q := fmt.Sprintf(`SELECT DISTINCT CONVERT(varchar(6), perref, 112) AS perref FROM %s ORDER BY perref DESC`, cfg.TblResumo)
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []string{}
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+type DetailOut struct {
+	DtApuracao        string  `json:"dtapuracao"`
+	CodCcu            string  `json:"codccu"`
+	DesSit            string  `json:"dessit"`
+	CodSit            int     `json:"codsit"`
+	HorasOriginal     float64 `json:"horas_original"`
+	BancoUsadoNaLinha float64 `json:"banco_usado_na_linha"`
+	HorasSaldo        float64 `json:"horas_saldo"`
+	ValorSaldo        float64 `json:"valor_saldo"`
+	ValHoraCalculado  float64 `json:"valhoracalculado"`
+}
+
+// queryDetail lista as linhas do detalhado (já processadas pelo /run) de um colaborador em um período,
+// para permitir drill-down na UI a partir de uma linha do resumo.
+func queryDetail(ctx context.Context, cfg config.Config, numemp, numcad int, perref string) ([]DetailOut, error) {
+	d, ok := perrefToDate(perref)
+	if !ok {
+		return nil, fmt.Errorf("perref inválido: %q", perref)
+	}
+
+	db, err := sql.Open("sqlserver", cfg.DestConn)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	q := fmt.Sprintf(`
+	SELECT CONVERT(varchar(10), dtapuracao, 23) AS dtapuracao, ISNULL(codccu,'') AS codccu,
+	       ISNULL(dessit,'') AS dessit, codsit,
+	       horas_original, banco_usado_na_linha, horas_saldo, valor_saldo, valhoracalculado
+	FROM %s
+	WHERE numemp = @p1 AND numcad = @p2 AND perref = @p3
+	ORDER BY dtapuracao ASC, codsit ASC
+	`, cfg.TblDetalhado)
+
+	rows, err := db.QueryContext(ctx, q, numemp, numcad, d)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []DetailOut{}
+	for rows.Next() {
+		var o DetailOut
+		if err := rows.Scan(
+			&o.DtApuracao, &o.CodCcu, &o.DesSit, &o.CodSit,
+			&o.HorasOriginal, &o.BancoUsadoNaLinha, &o.HorasSaldo, &o.ValorSaldo, &o.ValHoraCalculado,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
+var uiHTML = `<!doctype html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>BH Resumo Mensal</title>
 <style>
-body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 16px; margin-bottom: 16px; }
-h1 { margin: 0 0 12px; }
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f1f5f9; color:#0f172a; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); padding: 16px; margin-bottom: 16px; }
+h1 { margin: 0 0 4px; font-size: 22px; }
+.subtitle { color:#64748b; font-size:13px; margin: 0 0 16px; }
 label { display:block; font-size: 12px; color:#555; margin-bottom:4px; }
-input { padding:8px; border:1px solid #ddd; border-radius:8px; width:100%; }
+input, select { padding:8px; border:1px solid #ddd; border-radius:8px; width:100%; font-size:14px; }
 .grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-button { padding:10px 14px; border:none; border-radius:8px; background:#111827; color:#fff; cursor:pointer; }
-table { width:100%; border-collapse: collapse; }
-th, td { padding: 8px 10px; border-bottom:1px solid #eee; text-align:left; font-size: 14px; }
-th { background:#f8fafc; }
+button { padding:10px 14px; border:none; border-radius:8px; background:#111827; color:#fff; cursor:pointer; font-size:14px; }
+button:disabled { opacity:.6; cursor:default; }
+button.secondary { background:#0f766e; }
+button.ghost { background:#fff; color:#334155; border:1px solid #cbd5e1; }
+.actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .small { color:#64748b; font-size:12px; }
+.kpis { display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.kpi { background:#fff; border-radius:12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); padding:14px 16px; }
+.kpi .lbl { font-size:12px; color:#64748b; margin-bottom:4px; }
+.kpi .val { font-size:19px; font-weight:600; }
+.kpi .val.neg { color:#b91c1c; }
+.kpi .val.pos { color:#0f766e; }
+.table-scroll { width:100%; overflow-x:auto; }
+table { width:100%; border-collapse: collapse; white-space:nowrap; }
+th, td { padding: 8px 10px; border-bottom:1px solid #eee; text-align:left; font-size: 13px; }
+th { background:#f8fafc; cursor:pointer; user-select:none; position:sticky; top:0; }
+th .arrow { font-size:10px; color:#94a3b8; margin-left:4px; }
+tbody tr:hover { background:#f8fafc; cursor:pointer; }
+tbody tr:nth-child(even) { background:#fcfdfe; }
+td.num { text-align:right; font-variant-numeric: tabular-nums; }
+td.neg { color:#b91c1c; }
+.detail-row td { background:#f8fafc; padding:0; }
+.detail-box { padding:12px 16px; }
+.detail-box table { background:#fff; border-radius:8px; overflow:hidden; }
+.banner { padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px; }
+.banner.error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.banner.info { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+.empty { padding:24px; text-align:center; color:#94a3b8; }
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation: spin .7s linear infinite; vertical-align:-2px; margin-right:6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+<div class="wrap">
   <div class="card">
-    <h1>Resumo Mensal - Banco de Horas</h1>
+    <h1>Resumo Mensal — Banco de Horas</h1>
+    <p class="subtitle">Consulta e análise do resumo gerado pelo processamento (/run). A regra de cálculo não é alterada por esta tela.</p>
     <div class="grid">
       <div>
-        <label>Mês/Ano (YYYYMM ou YYYY-MM)</label>
-        <input id="perref" placeholder="202509" />
+        <label>Período(s) <span class="small">(Ctrl/Cmd+clique para vários; nenhum = todos)</span></label>
+        <select id="perref" multiple size="5"></select>
+        <div style="margin-top:6px; display:flex; gap:6px;">
+          <button type="button" class="ghost" style="padding:4px 8px; font-size:12px;" onclick="selectAllPeriods()">Selecionar todos</button>
+          <button type="button" class="ghost" style="padding:4px 8px; font-size:12px;" onclick="clearPeriods()">Limpar</button>
+        </div>
       </div>
       <div>
-        <label>Empresa (numemp)</label>
-        <input id="numemp" placeholder="1" />
+        <label>Crachá/Núm. Cad. (numemp)</label>
+        <input id="numemp" placeholder="361" inputmode="numeric" />
       </div>
       <div>
         <label>Centro de Custo (prefixo)</label>
@@ -317,78 +489,321 @@ th { background:#f8fafc; }
         <input id="colab" placeholder="Ana" />
       </div>
     </div>
-    <div style="margin-top:12px; display:flex; gap:8px;">
-      <button onclick="buscar()">Buscar</button>
-      <button onclick="rodar()" style="background:#0f766e">Processar /run</button>
+    <div class="actions">
+      <button id="btnBuscar" onclick="buscar()">Buscar</button>
+      <button id="btnRun" class="secondary" onclick="rodar()">Processar /run</button>
+      <button class="ghost" onclick="exportCsv()">Exportar CSV</button>
+      <span id="status" class="small"></span>
     </div>
-    <p class="small">Dica: clique em “Processar /run” para atualizar detalhado e resumo antes de consultar.</p>
   </div>
+
+  <div id="banner"></div>
+
+  <p class="small" id="kpisLabel" style="margin: 0 0 6px;"></p>
+  <div class="kpis" id="kpis"></div>
 
   <div class="card">
-    <table id="t">
-      <thead>
-        <tr>
-          <th>Período</th><th>Empresa</th><th>Crachá/Núm. Cad.</th><th>Colaborador</th><th>CCU</th>
-          <th>Horas +</th><th>Banco 230 consumido</th><th>Horas saldo</th><th>R$ saldo</th><th>Banco Total (grupo)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-scroll">
+      <table id="t">
+        <thead>
+          <tr>
+            <th data-k="perref">Período<span class="arrow"></span></th>
+            <th data-k="numcad">Empresa<span class="arrow"></span></th>
+            <th data-k="numemp">Crachá/Núm. Cad.<span class="arrow"></span></th>
+            <th data-k="colaborador">Colaborador<span class="arrow"></span></th>
+            <th data-k="codccu">CCU<span class="arrow"></span></th>
+            <th data-k="horas_positivas_original" class="num">Horas +<span class="arrow"></span></th>
+            <th data-k="banco_230_consumido_no_mes" class="num">Banco 230 consumido<span class="arrow"></span></th>
+            <th data-k="horas_saldo_mes" class="num">Horas saldo<span class="arrow"></span></th>
+            <th data-k="valor_saldo_mes" class="num">R$ saldo<span class="arrow"></span></th>
+            <th data-k="banco_total_aplicado_no_grupo" class="num">Banco Total (grupo)<span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="empty" class="empty" hidden>Nenhum registro encontrado para os filtros informados.</div>
+    </div>
   </div>
+</div>
 
 <script>
-async function buscar(){
-  const perref = document.getElementById('perref').value.trim();
-  const numemp = document.getElementById('numemp').value.trim();
-  const codccu = document.getElementById('codccu').value.trim();
-  const colab  = document.getElementById('colab').value.trim();
-  const p = new URLSearchParams();
-  if(perref) p.append('perref', perref);
-  if(numemp) p.append('numemp', numemp);
-  if(codccu) p.append('codccu', codccu);
-  if(colab)  p.append('colab', colab);
-
-  const res = await fetch('/summary?'+p.toString());
-  if(!res.ok){
-    alert('Erro ao buscar dados');
-    return;
-  }
-  const data = await res.json();
-  const tb = document.querySelector('#t tbody');
-  tb.innerHTML = '';
-  for(const r of data){
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + (r.perref || '') + '</td>' +
-      '<td>' + (r.numemp || '') + '</td>' +
-      '<td>' + (r.numcad || '') + '</td>' +
-      '<td>' + (r.colaborador || '') + '</td>' +
-      '<td>' + (r.codccu || '') + '</td>' +
-      '<td>' + fmt(r.horas_positivas_original) + '</td>' +
-      '<td>' + fmt(r.banco_230_consumido_no_mes) + '</td>' +
-      '<td>' + fmt(r.horas_saldo_mes) + '</td>' +
-      '<td>' + fmt(r.valor_saldo_mes) + '</td>' +
-      '<td>' + fmt(r.banco_total_aplicado_no_grupo) + '</td>';
-    tb.appendChild(tr);
-  }
-}
+let data = [];
+let sortKey = 'perref';
+let sortDir = 'desc';
+let openDetailKey = null;
 
 function fmt(v){
   const n = Number(v);
   const safe = Number.isFinite(n) ? n : 0;
   return safe.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function fmtPerref(p){
+  if(!p || p.length !== 6) return p || '';
+  return p.slice(0,4) + '-' + p.slice(4,6);
+}
+function showBanner(msg, kind){
+  const b = document.getElementById('banner');
+  if(!msg){ b.innerHTML = ''; return; }
+  b.innerHTML = '<div class="banner ' + (kind||'info') + '">' + msg + '</div>';
+}
+function setBusy(busy, btn, label){
+  btn.disabled = busy;
+  btn.innerHTML = busy ? '<span class="spinner"></span>' + label : label;
+}
 
-async function rodar(){
-  const res = await fetch('/run', {method:'POST'});
-  if(!res.ok){
-    alert('Falha no processamento');
+async function loadPeriods(){
+  try{
+    const res = await fetch('/periods');
+    if(!res.ok) return;
+    const periods = await res.json();
+    const sel = document.getElementById('perref');
+    sel.innerHTML = '';
+    for(const p of (periods || [])){
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = fmtPerref(p);
+      sel.appendChild(opt);
+    }
+    // por padrão seleciona só o período mais recente; o usuário pode marcar mais.
+    if(sel.options.length) sel.options[0].selected = true;
+  }catch(e){ /* seletor fica vazio (equivale a "todos") */ }
+}
+
+function selectAllPeriods(){
+  const sel = document.getElementById('perref');
+  for(const o of sel.options) o.selected = true;
+}
+function clearPeriods(){
+  const sel = document.getElementById('perref');
+  for(const o of sel.options) o.selected = false;
+}
+function selectedPeriods(){
+  return Array.from(document.getElementById('perref').selectedOptions).map(o => o.value);
+}
+
+async function buscar(){
+  const btn = document.getElementById('btnBuscar');
+  setBusy(true, btn, 'Buscar');
+  showBanner('', null);
+  const perrefs = selectedPeriods();
+  const numemp = document.getElementById('numemp').value.trim();
+  const codccu = document.getElementById('codccu').value.trim();
+  const colab  = document.getElementById('colab').value.trim();
+  const p = new URLSearchParams();
+  for(const pr of perrefs) p.append('perref', pr);
+  if(numemp) p.append('numemp', numemp);
+  if(codccu) p.append('codccu', codccu);
+  if(colab)  p.append('colab', colab);
+
+  try{
+    const res = await fetch('/summary?'+p.toString());
+    if(!res.ok){
+      showBanner('Erro ao buscar dados: ' + (await res.text()), 'error');
+      data = [];
+    } else {
+      data = await res.json() || [];
+    }
+  }catch(e){
+    showBanner('Falha de rede ao buscar dados: ' + e, 'error');
+    data = [];
+  }
+  openDetailKey = null;
+  const periodCount = new Set(data.map(r => r.perref)).size;
+  document.getElementById('status').textContent =
+    data.length + ' registro(s)' + (periodCount > 1 ? ' em ' + periodCount + ' períodos (total geral somado)' : '');
+  renderKpis();
+  render();
+  setBusy(false, btn, 'Buscar');
+}
+
+function renderKpis(){
+  const el = document.getElementById('kpis');
+  const periods = Array.from(new Set(data.map(r => r.perref))).sort();
+  const lbl = document.getElementById('kpisLabel');
+  lbl.textContent = periods.length > 1
+    ? 'Total geral somando ' + periods.length + ' períodos: ' + periods.map(fmtPerref).join(', ')
+    : (periods.length === 1 ? 'Período: ' + fmtPerref(periods[0]) : '');
+  const colabs = new Set(data.map(r => r.numemp + '|' + r.numcad));
+  const sum = (k) => data.reduce((a,r) => a + (Number(r[k]) || 0), 0);
+  const horasSaldo = sum('horas_saldo_mes');
+  const valorSaldo = sum('valor_saldo_mes');
+  const cards = [
+    ['Colaboradores', colabs.size.toLocaleString('pt-BR'), ''],
+    ['Horas positivas', fmt(sum('horas_positivas_original')), ''],
+    ['Banco 230 consumido', fmt(sum('banco_230_consumido_no_mes')), ''],
+    ['Horas saldo', fmt(horasSaldo), horasSaldo < 0 ? 'neg' : 'pos'],
+    ['R$ saldo', fmt(valorSaldo), valorSaldo < 0 ? 'neg' : 'pos'],
+  ];
+  el.innerHTML = cards.map(c =>
+    '<div class="kpi"><div class="lbl">' + c[0] + '</div><div class="val ' + c[2] + '">' + c[1] + '</div></div>'
+  ).join('');
+}
+
+function sortedData(){
+  const arr = data.slice();
+  arr.sort((a,b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if(typeof va === 'string'){ va = (va||'').toLowerCase(); vb = (vb||'').toLowerCase(); }
+    else { va = Number(va)||0; vb = Number(vb)||0; }
+    if(va < vb) return sortDir === 'asc' ? -1 : 1;
+    if(va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return arr;
+}
+
+function render(){
+  const tb = document.querySelector('#t tbody');
+  tb.innerHTML = '';
+  document.getElementById('empty').hidden = data.length !== 0;
+
+  document.querySelectorAll('#t th').forEach(th => {
+    const arrow = th.querySelector('.arrow');
+    arrow.textContent = th.dataset.k === sortKey ? (sortDir === 'asc' ? '▲' : '▼') : '';
+  });
+
+  for(const r of sortedData()){
+    const key = r.numemp + '|' + r.numcad + '|' + r.perref;
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + fmtPerref(r.perref) + '</td>' +
+      '<td>' + (r.numcad ?? '') + '</td>' +
+      '<td>' + (r.numemp ?? '') + '</td>' +
+      '<td>' + (r.colaborador || '<span class="small">—</span>') + '</td>' +
+      '<td>' + (r.codccu || '<span class="small">—</span>') + '</td>' +
+      '<td class="num">' + fmt(r.horas_positivas_original) + '</td>' +
+      '<td class="num">' + fmt(r.banco_230_consumido_no_mes) + '</td>' +
+      '<td class="num ' + (r.horas_saldo_mes < 0 ? 'neg' : '') + '">' + fmt(r.horas_saldo_mes) + '</td>' +
+      '<td class="num ' + (r.valor_saldo_mes < 0 ? 'neg' : '') + '">' + fmt(r.valor_saldo_mes) + '</td>' +
+      '<td class="num">' + fmt(r.banco_total_aplicado_no_grupo) + '</td>';
+    tr.title = 'Clique para ver o detalhado deste colaborador/período';
+    tr.addEventListener('click', () => toggleDetail(tr, r, key));
+    tb.appendChild(tr);
+    if(openDetailKey === key){
+      renderDetailRow(tr, r, key);
+    }
+  }
+}
+
+async function toggleDetail(tr, r, key){
+  const existing = tr.nextElementSibling;
+  if(existing && existing.classList.contains('detail-row')){
+    existing.remove();
+    openDetailKey = null;
     return;
   }
-  const j = await res.json();
-  alert('Processado: linhas=' + (j.processed || 0) + ' | resumo=' + (j.summary || 0));
-  buscar();
+  document.querySelectorAll('.detail-row').forEach(e => e.remove());
+  openDetailKey = key;
+  await renderDetailRow(tr, r, key);
 }
+
+async function renderDetailRow(tr, r, key){
+  const dtr = document.createElement('tr');
+  dtr.className = 'detail-row';
+  const td = document.createElement('td');
+  td.colSpan = 10;
+  td.innerHTML = '<div class="detail-box small">Carregando detalhado...</div>';
+  dtr.appendChild(td);
+  tr.after(dtr);
+
+  try{
+    const p = new URLSearchParams({ numemp: r.numemp, numcad: r.numcad, perref: r.perref });
+    const res = await fetch('/detail?' + p.toString());
+    if(!res.ok){
+      td.innerHTML = '<div class="detail-box banner error">Erro ao buscar detalhado: ' + (await res.text()) + '</div>';
+      return;
+    }
+    const rows = await res.json() || [];
+    if(!rows.length){
+      td.innerHTML = '<div class="detail-box small">Sem linhas de detalhado para este colaborador/período.</div>';
+      return;
+    }
+    let html = '<div class="detail-box"><table><thead><tr>' +
+      '<th>Data apuração</th><th>CCU</th><th>Situação</th><th class="num">Horas orig.</th>' +
+      '<th class="num">Banco usado</th><th class="num">Horas saldo</th><th class="num">R$ saldo</th>' +
+      '</tr></thead><tbody>';
+    for(const d of rows){
+      html += '<tr>' +
+        '<td>' + (d.dtapuracao || '') + '</td>' +
+        '<td>' + (d.codccu || '') + '</td>' +
+        '<td>' + (d.dessit || '') + ' (' + d.codsit + ')</td>' +
+        '<td class="num">' + fmt(d.horas_original) + '</td>' +
+        '<td class="num">' + fmt(d.banco_usado_na_linha) + '</td>' +
+        '<td class="num ' + (d.horas_saldo < 0 ? 'neg' : '') + '">' + fmt(d.horas_saldo) + '</td>' +
+        '<td class="num ' + (d.valor_saldo < 0 ? 'neg' : '') + '">' + fmt(d.valor_saldo) + '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table></div>';
+    td.innerHTML = html;
+  }catch(e){
+    td.innerHTML = '<div class="detail-box banner error">Falha de rede: ' + e + '</div>';
+  }
+}
+
+document.querySelectorAll('#t th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if(sortKey === k){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+    else { sortKey = k; sortDir = 'asc'; }
+    render();
+  });
+});
+
+function exportCsv(){
+  if(!data.length){ showBanner('Nada para exportar — faça uma busca primeiro.', 'error'); return; }
+  // labels seguem a mesma ordem exibida na tabela (empresa <- numcad, cracha/numcad <- numemp)
+  const cols = [
+    {label:'perref', key:'perref'},
+    {label:'empresa', key:'numcad'},
+    {label:'cracha_numcad', key:'numemp'},
+    {label:'colaborador', key:'colaborador'},
+    {label:'codccu', key:'codccu'},
+    {label:'horas_positivas_original', key:'horas_positivas_original'},
+    {label:'banco_230_consumido_no_mes', key:'banco_230_consumido_no_mes'},
+    {label:'horas_saldo_mes', key:'horas_saldo_mes'},
+    {label:'valor_saldo_mes', key:'valor_saldo_mes'},
+    {label:'banco_total_aplicado_no_grupo', key:'banco_total_aplicado_no_grupo'},
+  ];
+  const header = cols.map(c => c.label).join(';');
+  const lines = sortedData().map(r => cols.map(c => {
+    const v = r[c.key];
+    if(typeof v === 'string') return '"' + v.replace(/"/g,'""') + '"';
+    return String(v ?? '');
+  }).join(';'));
+  const csv = '\uFEFF' + [header, ...lines].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bh_resumo.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function rodar(){
+  if(!confirm('Processar /run agora? Isso lê a origem e regrava o detalhado/resumo de destino.')) return;
+  const btn = document.getElementById('btnRun');
+  setBusy(true, btn, 'Processando...');
+  showBanner('Processando ETL, isso pode levar alguns segundos...', 'info');
+  try{
+    const res = await fetch('/run', {method:'POST'});
+    if(!res.ok){
+      showBanner('Falha no processamento: ' + (await res.text()), 'error');
+    } else {
+      const j = await res.json();
+      showBanner('Processado com sucesso: ' + (j.processed || 0) + ' linhas detalhadas, ' + (j.summary || 0) + ' registros de resumo.', 'info');
+      await loadPeriods();
+      await buscar();
+    }
+  }catch(e){
+    showBanner('Falha de rede ao processar: ' + e, 'error');
+  }
+  setBusy(false, btn, 'Processar /run');
+}
+
+loadPeriods().then(buscar);
 </script>
 </body></html>`
 
