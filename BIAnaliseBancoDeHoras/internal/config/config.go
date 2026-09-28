@@ -23,6 +23,9 @@ type Config struct {
 	UpsertResumo bool
 
 	HTTPPort string
+
+	// UIPassword protege a interface (/ui) e a API. Vazio = sem proteção (não recomendado).
+	UIPassword string
 }
 
 func Load() Config {
@@ -51,6 +54,12 @@ func Load() Config {
 		UpsertResumo: upsertResumo,
 
 		HTTPPort: getEnv("HTTP_PORT", ":8093"),
+
+		UIPassword: os.Getenv("UI_PASSWORD"),
+	}
+
+	if cfg.UIPassword == "" {
+		log.Println("[AVISO] UI_PASSWORD não definido: a interface e a API ficarão sem proteção de senha")
 	}
 
 	// Valida conexões mínimas

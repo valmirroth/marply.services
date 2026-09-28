@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -21,18 +24,60 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+const authCookieName = "bh_session"
+
 func main() {
 	cfg := config.Load()
 	Agenda()
 	mux := http.NewServeMux()
+
+	// token de sessão gerado a cada start do processo: reiniciar o serviço
+	// derruba todas as sessões logadas. Não depende de armazenar a senha em lugar nenhum.
+	authToken := randomToken()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			_ = r.ParseForm()
+			pw := r.FormValue("password")
+			if cfg.UIPassword != "" && subtle.ConstantTimeCompare([]byte(pw), []byte(cfg.UIPassword)) == 1 {
+				http.SetCookie(w, &http.Cookie{
+					Name:     authCookieName,
+					Value:    authToken,
+					Path:     "/",
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+					MaxAge:   12 * 3600,
+				})
+				http.Redirect(w, r, "/ui", http.StatusFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(loginPage(true)))
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(loginPage(false)))
+	})
+
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     authCookieName,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			MaxAge:   -1,
+		})
+		http.Redirect(w, r, "/login", http.StatusFound)
+	})
+
 	// Run ETL end-to-end
-	mux.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/run", requireAuth(cfg, authToken, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
@@ -129,10 +174,10 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "processed": len(processeds), "summary": len(summary)})
-	})
+	}))
 
 	// Query summary (JSON)
-	mux.HandleFunc("/summary", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/summary", requireAuth(cfg, authToken, func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		perrefs := parsePerrefs(r.URL.Query()["perref"]) // um ou mais YYYYMM/YYYY-MM; vazio = todos os períodos
 		numemp := parseInt(r.URL.Query().Get("numemp"))
@@ -146,10 +191,10 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(rows)
-	})
+	}))
 
 	// Lista os períodos (perref) já processados, para alimentar o seletor da UI
-	mux.HandleFunc("/periods", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/periods", requireAuth(cfg, authToken, func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		periods, err := listPeriods(ctx, cfg)
 		if err != nil {
@@ -158,10 +203,10 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(periods)
-	})
+	}))
 
 	// Detalhe (linhas do detalhado) de um colaborador em um período, para drill-down na UI
-	mux.HandleFunc("/detail", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/detail", requireAuth(cfg, authToken, func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		numemp := parseInt(r.URL.Query().Get("numemp"))
 		numcad := parseInt(r.URL.Query().Get("numcad"))
@@ -177,19 +222,84 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(rows)
-	})
+	}))
 
 	// UI
-	mux.HandleFunc("/ui", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ui", requireAuth(cfg, authToken, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		tmpl := template.Must(template.New("ui").Parse(uiHTML))
 		_ = tmpl.Execute(w, nil)
-	})
+	}))
 
 	log.Printf("HTTP ouvindo em %s\n", cfg.HTTPPort)
 	if err := http.ListenAndServe(cfg.HTTPPort, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func randomToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatal("falha ao gerar token de sessão: ", err)
+	}
+	return hex.EncodeToString(b)
+}
+
+// requireAuth protege uma rota com a sessão criada em /login. Se UIPassword
+// estiver vazio no config, a proteção fica desativada (comportamento anterior).
+func requireAuth(cfg config.Config, authToken string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if cfg.UIPassword == "" {
+			next(w, r)
+			return
+		}
+		c, err := r.Cookie(authCookieName)
+		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(authToken)) != 1 {
+			if r.Header.Get("Accept") != "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if r.URL.Path == "/ui" {
+				http.Redirect(w, r, "/login", http.StatusFound)
+				return
+			}
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func loginPage(wrongPassword bool) string {
+	errBlock := ""
+	if wrongPassword {
+		errBlock = `<div class="err">Senha incorreta.</div>`
+	}
+	return `<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login — BH Resumo Mensal</title>
+<style>
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f1f5f9; margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+.card { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); padding:32px; width:320px; }
+h1 { font-size:18px; margin:0 0 16px; }
+label { display:block; font-size:12px; color:#555; margin-bottom:4px; }
+input { padding:10px; border:1px solid #ddd; border-radius:8px; width:100%; font-size:14px; box-sizing:border-box; }
+button { margin-top:16px; padding:10px 14px; border:none; border-radius:8px; background:#111827; color:#fff; cursor:pointer; width:100%; font-size:14px; }
+.err { color:#b91c1c; font-size:13px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <h1>Resumo Mensal — Banco de Horas</h1>
+    ` + errBlock + `
+    <label>Senha</label>
+    <input type="password" name="password" autofocus required />
+    <button type="submit">Entrar</button>
+  </form>
+</body></html>`
 }
 
 // perrefToDate converte "YYYYMM" ou "YYYY-MM" para "YYYY-MM-01", formato
@@ -494,6 +604,7 @@ td.neg { color:#b91c1c; }
       <button id="btnRun" class="secondary" onclick="rodar()">Processar /run</button>
       <button class="ghost" onclick="exportCsv()">Exportar CSV</button>
       <span id="status" class="small"></span>
+      <a href="/logout" class="ghost" style="padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; color:#334155; text-decoration:none; font-size:14px; margin-left:auto;">Sair</a>
     </div>
   </div>
 

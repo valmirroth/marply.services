@@ -13,7 +13,8 @@ select codcal, codbh, perref, sitafa,
 		resumo.ValHoraMes, ValHoraCalculado, resumo.dessit, 
 		resumo.codsit, SUM(qtdhor) as horas, horamin, (ValHoraCalculado * SUM( resumo.qtdhor ) ) as [R$ valor]
 		from (
-		SELECT ( select case when codbhr = 0 and numcad in ('7259','344756') then 5 else codbhr end from r038hsi where numcad = r034fun.numcad and numemp = r034fun.numemp  and tipcol = r034fun.tipcol
+		SELECT ( select case when codbhr = 0 and numcad in ('7259','344756') then 5 else codbhr end from r038hsi where numcad = r034fun.numcad 
+				and numemp = r034fun.numemp  and tipcol = r034fun.tipcol
 				and datalt = (
 							select max(datalt) from r038hsi 
 							where 
@@ -84,10 +85,10 @@ select codcal, codbh, perref, sitafa,
 			inner join r010sit on r010sit.codsit = r034fun.sitafa
 			inner join r044cal on r044cal.tipcal ='11' and  r066apu.datapu between r044cal.iniapu and r044cal.fimapu and r044cal.numemp = r066apu.numemp 
 		where 1=1 
-			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20250826'))
+			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20260926'))
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20260326' 
-			and convert(varchar,(r066sit.datapu),112) < '20260926'
+			and convert(varchar,( r066sit.datapu),112) >= '20260926' 
+			and convert(varchar,(r066sit.datapu),112) < '20270226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (5)  )  )
 			and codfil in (1,5)
 			and r034fun.sitafa <> '7'
@@ -174,7 +175,8 @@ select codcal, codbh, perref, sitafa,
 			case when sit.codsit in (230,109,336) then 230 else sit.codsit end as codsit,
 			case when sit.codsit in (230,109,336) then (r066sit.qtdhor/60.000) * (-1) else (r066sit.qtdhor/60.000)  end qtdhor,
 			r066sit.qtdhor horamin
-		FROM  (	select numemp, tipcol, numcad, datlan as datapu, case when orilan = 'B' then 230 else  codsit end codsit ,  qtdhor from r011lan where  orilan in ('D', 'B') and    r011lan.datcmp >= '20260326') r066sit
+		FROM  (	select numemp, tipcol, numcad, datlan as datapu, case when orilan = 'B' then 230 else  codsit end codsit ,  
+					qtdhor from r011lan where  orilan in ('D', 'B') and    r011lan.datcmp >= '20260926') r066sit
 			left join r066apu on  r066sit.numemp = r066apu.numemp and r066sit.tipcol = r066apu.tipcol and r066sit.numcad = r066apu.numcad           
 			and r066sit.datapu = r066apu.datapu
 			left join r034fun (nolock) on r034fun.numcad = r066apu.numcad   
@@ -183,10 +185,10 @@ select codcal, codbh, perref, sitafa,
 			inner join r010sit on r010sit.codsit = r034fun.sitafa
 			inner join r044cal on r044cal.tipcal ='11' and  r066apu.datapu between r044cal.iniapu and r044cal.fimapu and r044cal.numemp = r066apu.numemp 
 		where 1=1 
-			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20250826'))
+			--and (r010sit.codsit <> '7' or (r034fun.datafa >= '20260926'))
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20260326' 
-			and convert(varchar,(r066sit.datapu),112) < '20260926'
+			and convert(varchar,( r066sit.datapu),112) >= '20260926' 
+			and convert(varchar,(r066sit.datapu),112) < '20270226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (5)  )  )
 			and codfil in (1,5)
 			and r034fun.sitafa <> '7'
@@ -290,8 +292,8 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20260326' 
-			and convert(varchar,(r066sit.datapu),112) < '20260926'
+			and convert(varchar,( r066sit.datapu),112) >= '20260926' 
+			and convert(varchar,(r066sit.datapu),112) < '20270226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
@@ -377,7 +379,7 @@ select codcal, codbh, perref, sitafa,
 			case when sit.codsit in (230,109,336) then 230 else sit.codsit end as codsit,
 			case when sit.codsit in (230,109,336) then (r066sit.qtdhor/60.000) * (-1) else (r066sit.qtdhor/60.000)  end qtdhor,
 			r066sit.qtdhor horamin
-		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20260126') r066sit
+		FROM  (	select numemp, tipcol, numcad, datlan as datapu, codsit,  qtdhor from r011lan where  orilan= 'D' and    r011lan.datcmp >= '20260926') r066sit
 			left join r066apu on  r066sit.numemp = r066apu.numemp and r066sit.tipcol = r066apu.tipcol and r066sit.numcad = r066apu.numcad           
 			and r066sit.datapu = r066apu.datapu
 			left join r034fun (nolock) on r034fun.numcad = r066apu.numcad   
@@ -388,8 +390,8 @@ select codcal, codbh, perref, sitafa,
 		where 1=1 
 			--r010sit.codsit <> '7'
 			--and r034fun.codccu in ('cc103','cc789','cc252')
-			and convert(varchar,( r066sit.datapu),112) >= '20260326' 
-			and convert(varchar,(r066sit.datapu),112) < '20260926'
+			and convert(varchar,( r066sit.datapu),112) >= '20260926' 
+			and convert(varchar,(r066sit.datapu),112) < '20270226'
 			and   ( sit.codsit in ( select  codsit from r011eve where codbhr in (8)  )  )
 			and codfil in (1,5)
 		) as resumo
