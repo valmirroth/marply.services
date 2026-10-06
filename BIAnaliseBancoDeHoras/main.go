@@ -253,6 +253,10 @@ func requireAuth(cfg config.Config, authToken string, next http.HandlerFunc) htt
 			next(w, r)
 			return
 		}
+		if pw := r.Header.Get("X-BH-Password"); pw != "" && subtle.ConstantTimeCompare([]byte(pw), []byte(cfg.UIPassword)) == 1 {
+			next(w, r)
+			return
+		}
 		c, err := r.Cookie(authCookieName)
 		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(authToken)) != 1 {
 			if r.Header.Get("Accept") != "" && strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -919,7 +923,7 @@ loadPeriods().then(buscar);
 </body></html>`
 
 // dispara um POST para /run no próprio servidor
-func triggerRunOnce(ctx context.Context, baseURL string) error {
+func triggerRunOnce(ctx context.Context, baseURL, password string) error {
 	reqBody, _ := json.Marshal(map[string]any{}) // body vazio
 	fmt.Println("vai chamar o agendador de tarefas...")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://192.168.1.28:8093/run", bytes.NewReader(reqBody))
@@ -927,6 +931,9 @@ func triggerRunOnce(ctx context.Context, baseURL string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if password != "" {
+		req.Header.Set("X-BH-Password", password)
+	}
 	fmt.Println("rodando pelo agendador...")
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
@@ -971,7 +978,7 @@ func Agenda() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 
-		if err := triggerRunOnce(ctx, baseURL); err != nil {
+		if err := triggerRunOnce(ctx, baseURL, cfg.UIPassword); err != nil {
 			log.Printf("[SCHED] Erro ao chamar /run: %v", err)
 			return
 		}
